@@ -20,8 +20,16 @@ services:
         fromDatabase:
           name: janawaaz-db
           property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CLAUDE_MODEL
+        value: claude-opus-4-8
       - key: GEMINI_API_KEY
         sync: false
+      - key: GEMINI_MODEL
+        value: gemini-flash-latest
+      - key: EMBEDDINGS_PROVIDER
+        value: gemini
       - key: SARVAM_API_KEY
         sync: false
       - key: TELEGRAM_BOT_TOKEN
@@ -30,7 +38,7 @@ services:
   - type: cron
     name: janawaaz-sweep-trigger
     runtime: python
-    plan: free
+    plan: starter  # cron has no free tier; a 30s trigger every 6h bills pennies
     schedule: "0 */6 * * *"  # every 6h during demo week; relax to daily after
     buildCommand: pip install .
     startCommand: python scripts/trigger_sweep.py
