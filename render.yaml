@@ -1,0 +1,48 @@
+# Render blueprint: web service + cron trigger + Postgres (pgvector).
+#
+# The Workflow service (the durable task chain in janawaaz/workflows.py) is in
+# early access and created manually in the Render dashboard:
+#   New > Workflow -> repo root, start command: python main.py
+# Render Cron below triggers its root task via the API (scripts/trigger_sweep.py)
+# because Workflows has no native scheduler yet.
+
+services:
+  - type: web
+    name: janawaaz-web
+    runtime: python
+    plan: free
+    buildCommand: pip install .
+    startCommand: uvicorn janawaaz.web.app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.4
+      - key: DATABASE_URL
+        fromDatabase:
+          name: janawaaz-db
+          property: connectionString
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+
+  - type: cron
+    name: janawaaz-sweep-trigger
+    runtime: python
+    plan: free
+    schedule: "0 */6 * * *"  # every 6h during demo week; relax to daily after
+    buildCommand: pip install .
+    startCommand: python scripts/trigger_sweep.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.4
+      - key: RENDER_API_KEY
+        sync: false
+      - key: SWEEP_TASK
+        value: janawaaz-workflows/sweep_sources
+
+databases:
+  - name: janawaaz-db
+    plan: free
+    postgresMajorVersion: "16"
