@@ -15,6 +15,7 @@ from janawaaz.models import Alert, Document, MatchLedger, User
 log = logging.getLogger(__name__)
 
 SARVAM_TRANSLATE_URL = "https://api.sarvam.ai/translate"
+SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
 # Sarvam language codes are BCP-47-ish with -IN suffix.
 SARVAM_LANG = {"hi": "hi-IN", "mr": "mr-IN", "en": "en-IN"}
 
@@ -66,6 +67,46 @@ def translate(text: str, lang: str) -> str:
     return resp.json().get("translated_text", text)
 
 
+def tts(text: str, lang: str) -> bytes | None:
+    """Sarvam Bulbul TTS -> WAV bytes. Voice alerts reach users who can't read
+    the alert — the accessibility half of the vernacular story."""
+    cfg = settings()
+    if not cfg.sarvam_api_key:
+        return None
+    import base64
+
+    resp = httpx.post(
+        SARVAM_TTS_URL,
+        headers={"api-subscription-key": cfg.sarvam_api_key},
+        json={
+            "text": text[:1500],
+            "target_language_code": SARVAM_LANG.get(lang, "hi-IN"),
+            "speaker": cfg.sarvam_tts_speaker,
+            "model": "bulbul:v2",
+        },
+        timeout=cfg.http_timeout_seconds,
+    )
+    resp.raise_for_status()
+    audios = resp.json().get("audios") or []
+    return base64.b64decode(audios[0]) if audios else None
+
+
+def telegram_send_audio(chat_id: str, audio_wav: bytes, caption: str = "") -> bool:
+    cfg = settings()
+    if not cfg.telegram_bot_token:
+        return False
+    resp = httpx.post(
+        f"https://api.telegram.org/bot{cfg.telegram_bot_token}/sendAudio",
+        data={"chat_id": chat_id, "caption": caption[:1000], "title": "JanAwaaz alert"},
+        files={"audio": ("alert.wav", audio_wav, "audio/wav")},
+        timeout=cfg.http_timeout_seconds * 2,
+    )
+    ok = resp.status_code == 200 and resp.json().get("ok") is True
+    if not ok:
+        log.error("telegram sendAudio failed: %s %s", resp.status_code, resp.text[:300])
+    return ok
+
+
 def telegram_send(chat_id: str, text: str) -> bool:
     cfg = settings()
     if not cfg.telegram_bot_token:
@@ -92,6 +133,13 @@ def send_alert(session, doc: Document, user: User, ledger: MatchLedger) -> Alert
     if user.telegram_chat_id and telegram_send(user.telegram_chat_id, payload):
         alert.status = "sent"
         alert.sent_at = datetime.now(timezone.utc)
+        if settings().voice_alerts and lang in ("hi", "mr"):
+            try:
+                audio = tts(payload, lang)
+                if audio:
+                    telegram_send_audio(user.telegram_chat_id, audio, caption=doc.title[:200])
+            except Exception:  # voice is best-effort; the text alert already landed
+                log.exception("voice alert failed for user %s", user.id)
     session.add(alert)
     session.flush()
     return alert

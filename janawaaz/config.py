@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     render_api_key: str = ""
 
+    # Voice alerts: Sarvam Bulbul TTS sent as Telegram audio, for low-literacy
+    # users. Off by default to conserve API credits; enable for demos.
+    voice_alerts: bool = False
+    sarvam_tts_speaker: str = "anushka"
+
     similarity_threshold: float = 0.30
     # Tier 1 requires the LLM verifier to confirm AND return a span found verbatim
     # in the document text; similarity alone can never push past Tier 2.

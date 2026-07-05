@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}You’re in — JanAwaaz{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <h1>Done, {{ name }}. The agent is watching.</h1>
+    <p>From now on, every new consultation from every tracked source is matched against your profile.</p>
+  </div>
+  <div class="form-card">
+    <p><strong>What happens next</strong></p>
+    <p style="color:var(--ink-2);">
+      When a consultation genuinely affects you — and only when we can quote the document to prove it —
+      you’ll get a Telegram alert in {{ language_label }} with the deadline, what changes for you, and where to comment.
+      Weak matches stay in <a href="/feed">your feed</a>; they never buzz your phone.
+    </p>
+    {% if not has_telegram %}
+    <div class="notice">
+      You didn’t add a Telegram chat ID, so push alerts are off. Message <strong>@userinfobot</strong> on
+      Telegram to get your ID, then sign up again with it — or just check the feed.
+    </div>
+    {% endif %}
+    <p><a class="btn primary" href="/feed">Browse consultations now</a></p>
+  </div>
+</div>
+{% endblock %}

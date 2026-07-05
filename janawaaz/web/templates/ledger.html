@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Ledger #{{ row.id }} — why this alert fired — JanAwaaz{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <h1>Match ledger #{{ row.id }}</h1>
+    <p>The full, immutable record of why this consultation {{ "was pushed to" if row.tier == 1 else "was not pushed to" }} this citizen.</p>
+  </div>
+
+  <div class="ledger-doc">
+    <div class="meta" style="margin-bottom:8px;">
+      <span class="badge source">{{ source_name | upper }}</span>
+    </div>
+    <h2>{{ doc.title }}</h2>
+    {% if doc.summary_en %}<p style="color:var(--ink-2);">{{ doc.summary_en }}</p>{% endif %}
+    {% if doc.deadline %}
+      <p><strong>Extracted deadline:</strong> {{ doc.deadline.strftime("%d %B %Y") }}
+      {% if doc.deadline_verified %} <span class="badge t1">span-verified</span>{% else %} <span class="badge t2">unverified</span>{% endif %}</p>
+      {% if doc.deadline_span %}
+      <blockquote class="evidence">“{{ doc.deadline_span }}”
+        <span class="src">quoted verbatim from the source document — this is where the deadline comes from</span>
+      </blockquote>
+      {% endif %}
+    {% endif %}
+    <p style="font-size:0.9rem;"><a href="{{ doc.body_url }}" rel="noopener">Source document</a>
+      {% if doc.comment_channel %} · <a href="{{ doc.comment_channel }}" rel="noopener">Comment channel</a>{% endif %}</p>
+  </div>
+
+  <div class="verdict-line">
+    {% if row.tier == 1 %}<span class="badge t1">Tier 1 — Confirmed → alert sent</span>
+    {% elif row.tier == 2 %}<span class="badge t2">Tier 2 — Possible → feed only, no push</span>
+    {% else %}<span class="badge t3">Tier 3 — Rejected → ledger only</span>{% endif %}
+    <span style="color:var(--ink-3); font-size:0.9rem;">decided {{ row.created_at.strftime("%d %b %Y %H:%M UTC") }}</span>
+  </div>
+
+  <div class="rail">
+    <div class="rail-step">
+      <span class="rail-ico {{ 'pass' if sim_passed else 'fail' }}">{{ '✓' if sim_passed else '✕' }}</span>
+      <div>
+        <h4>1 · Semantic similarity — {{ "%.2f" | format(row.similarity) }} against threshold {{ "%.2f" | format(threshold) }}</h4>
+        <p>Cosine similarity between the citizen’s interest profile and this consultation’s embedding.</p>
+        <div class="simbar"><i style="width: {{ (row.similarity * 100) | round(0) | int }}%"></i></div>
+      </div>
+    </div>
+    <div class="rail-step">
+      {% if row.verifier_verdict == "yes" %}<span class="rail-ico pass">✓</span>
+      {% elif row.verifier_verdict == "no" %}<span class="rail-ico fail">✕</span>
+      {% else %}<span class="rail-ico warn">–</span>{% endif %}
+      <div>
+        <h4>2 · Independent verifier — “does this materially affect this person?”</h4>
+        <p>{% if row.verifier_verdict == "skipped" %}{{ row.verifier_reason or "not reached" }}{% else %}Verdict: <strong>{{ row.verifier_verdict }}</strong>{% if row.verifier_reason %} — {{ row.verifier_reason }}{% endif %}{% endif %}</p>
+      </div>
+    </div>
+    <div class="rail-step">
+      {% if row.span_verified %}<span class="rail-ico pass">✓</span>
+      {% elif row.evidence_span %}<span class="rail-ico fail">✕</span>
+      {% else %}<span class="rail-ico warn">–</span>{% endif %}
+      <div>
+        <h4>3 · Evidence span — string-checked against the document</h4>
+        {% if row.evidence_span %}
+          <blockquote class="evidence {{ '' if row.span_verified else 'bad' }}">“{{ row.evidence_span }}”
+            <span class="src">{% if row.span_verified %}found verbatim in the source document ✓{% else %}NOT found in the source document — match demoted ✕{% endif %}</span>
+          </blockquote>
+        {% else %}
+          <p>No span offered — a match without quotable evidence can never reach Tier 1.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <p style="color:var(--ink-3); font-size:0.88rem; padding-bottom:40px;">
+    Raw record: <a href="/api/ledger/{{ row.id }}">/api/ledger/{{ row.id }}</a> ·
+    Ledger rows are append-only; decisions are never edited or deleted.
+  </p>
+</div>
+{% endblock %}

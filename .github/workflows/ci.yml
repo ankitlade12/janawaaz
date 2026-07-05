@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: janawaaz
+          POSTGRES_PASSWORD: janawaaz
+          POSTGRES_DB: janawaaz
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U janawaaz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://janawaaz:janawaaz@localhost:5433/janawaaz
+      EMBEDDINGS_PROVIDER: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync
+      - name: Run tests
+        run: uv run pytest -q

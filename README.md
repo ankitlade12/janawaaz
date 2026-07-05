@@ -1,59 +1,129 @@
 # JanAwaaz (जन आवाज़ — "people's voice")
 
-> The agent that tells you when your government is asking for your opinion — with proof, in your own language, before the window closes.
+> **The agent that tells you when your government is asking for your opinion — with proof, in your own language, before the window closes.**
 
-**HACKHAZARDS '26 submission** · Tracks: Render Workflows, Sarvam AI · Theme: Public Systems, Governance & Civic Tech
+[![CI](https://github.com/ankitlade12/janawaaz/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitlade12/janawaaz/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 
-India's Pre-Legislative Consultation Policy (2014) requires ministries to publish draft bills for 30 days of public comment, and regulators like TRAI run continuous consultation streams. In practice the comment boxes fill with industry stakeholders, because ordinary citizens never learn a consultation exists until it has closed. **Discovery is the broken step, not access.** JanAwaaz is a durable agent that watches every source, matches consultations to what you told it you care about, verifies each match against the source document, and pushes an alert in your language with the deadline and a link to comment.
+**HACKHAZARDS '26** · Tracks: **Render Workflows** · **Sarvam AI** · Theme: Public Systems, Governance & Civic Tech
 
-## How it works
+---
 
+## The problem
+
+India's Pre-Legislative Consultation Policy (2014) requires ministries to publish draft laws for 30 days of public comment. Regulators — TRAI, SEBI, RBI — run continuous consultation streams on rules that change crop insurance, telecom tariffs, and how your data is used. In practice the comment boxes fill with industry lobbyists, because **ordinary citizens never learn a consultation exists until it has closed**.
+
+In 2015, TRAI's net-neutrality consultation nearly passed unnoticed. The ones since mostly have. **Discovery is the broken step, not access.**
+
+## What JanAwaaz does
+
+You describe yourself once, in one plain sentence — *"I run a small textile export business in Surat"*. From then on, a durable agent:
+
+1. **Watches** every tracked source on a schedule, surviving flaky government sites with automatic retries.
+2. **Parses** each new paper: full text, plus the comment deadline extracted with a **verbatim evidence span**, string-checked against the document. A wrong deadline is worse than no alert — unverifiable deadlines are labelled as such, never invented.
+3. **Matches** the paper against every citizen profile semantically (pgvector cosine over 768-dim embeddings).
+4. **Gates** every candidate match — the part nobody else does (below).
+5. **Alerts** you on Telegram in English, हिन्दी or मराठी via Sarvam AI — with the deadline, what changes for you, where to comment, and the quoted evidence for *why you* got the alert. Optional voice alerts (Sarvam Bulbul TTS) for users who can't comfortably read them.
+
+## The gate — every alert shows its work
+
+Embedding similarity alone fires garbage: *"interested in agriculture"* matches a telecom tariff paper because both mention "rural". So no alert is sent on similarity alone:
+
+| Tier | Requirement | Consequence |
+|---|---|---|
+| **1 — Confirmed** | similarity ≥ threshold **AND** an LLM verifier answers a strict yes **AND** returns a verbatim span from the document, **string-checked against the actual text** | push alert |
+| **2 — Possible** | similarity passes, but the evidence is weak or the span fails the string check | feed only, never pushes |
+| **3 — Rejected** | below threshold, or verifier says no | ledger only |
+
+Every decision — including every rejection — is an append-only row in the **match ledger**: similarity score, verdict, evidence span, span-check result, tier, timestamp. Rendered at `/ledger/{id}` so anyone can audit why an alert fired (or didn't). *If we can't prove the match, we don't wake you up.*
+
+## Architecture
+
+```mermaid
+flowchart LR
+    CRON["Render Cron<br/>(every 6h)"] -->|Render API| ROOT
+
+    subgraph WF["Render Workflows — durable task chain"]
+        ROOT["sweep_sources"] --> F["fetch_source(adapter)<br/>retry x5, backoff"]
+        F --> P["parse_document<br/>PDF text + deadline span"]
+        P --> S["summarize_and_embed<br/>Gemini + text-embedding-004"]
+        S --> M["match_users<br/>pgvector cosine"]
+        M --> G["gate_match<br/>verifier + span check"]
+        G --> N["translate_and_notify<br/>Sarvam → Telegram"]
+    end
+
+    subgraph DATA["Render Postgres + pgvector"]
+        DOCS[(documents)]
+        USERS[(users)]
+        LEDGER[(match_ledger)]
+        ALERTS[(alerts)]
+    end
+
+    subgraph WEB["FastAPI on Render"]
+        LAND["/ landing"]
+        FEED["/feed"]
+        LEDG["/ledger/{id} provenance"]
+        ONB["/onboard"]
+        API["/api/*"]
+    end
+
+    P --> DOCS
+    G --> LEDGER
+    N --> ALERTS
+    ONB --> USERS
+    DATA --> WEB
 ```
-Render Cron ──▶ sweep_sources (root task, Render Workflows)
-                   ├─▶ fetch_source(trai) ─ retries survive flaky gov sites
-                   ├─▶ parse_document ─ PDF text + comment-deadline extraction
-                   │      (regex-first, LLM fallback; every deadline carries a
-                   │       verbatim evidence span, string-checked against the doc)
-                   ├─▶ summarize_and_embed ─ 150-word plain-English summary
-                   │      (Gemini) + text-embedding-004 vector → pgvector
-                   ├─▶ match_users ─ cosine similarity vs. every citizen profile
-                   ├─▶ gate_match ─ THE DETERMINISTIC GATE (below)
-                   └─▶ translate_and_notify ─ Sarvam translation → Telegram push
-```
 
-### The gate
-
-Embedding similarity alone fires garbage ("interested in agriculture" matches a telecom tariff paper because both say "rural"). Every candidate match passes a deterministic gate:
-
-- **Tier 1 — Confirmed:** similarity ≥ threshold **and** an LLM verifier answers a strict yes/no **and** returns a verbatim span from the document as evidence, string-checked against the actual text. Only Tier 1 wakes you up.
-- **Tier 2 — Possible:** similarity passes but verification is weak → dashboard feed only.
-- **Tier 3 — Rejected:** below threshold or verifier says no → ledger only.
-
-Every decision is written to an immutable **match ledger** (similarity score, verdict, evidence span, span-check result, tier) and rendered at `/ledger/{id}` — every alert shows its work.
-
-## Status
-
-Day 1 of a 9-day build (July 4–12, 2026). Working today: TRAI adapter (live listing → normalized records), deadline extraction with evidence spans, schema + gate + pipeline running locally end-to-end. See commits for progress.
+**Sources today:** TRAI (Drupal listing, open + archive) and SEBI (sitemap-based discovery — the feed that can't restructure under us). The adapter contract is one normalized record; **adding a source is one file** plus one registry line. Go/no-go log lives in `janawaaz/adapters/__init__.py` (MCA: 403 bot-wall; RBI: JS-rendered listing — both documented, not hidden).
 
 ## Run it locally
 
 ```bash
-docker compose up -d          # Postgres 16 + pgvector on :5433
-cp .env.example .env          # add GEMINI_API_KEY (or EMBEDDINGS_PROVIDER=dev to run keyless)
+git clone https://github.com/ankitlade12/janawaaz && cd janawaaz
+docker compose up -d                  # Postgres 16 + pgvector on :5433
+cp .env.example .env                  # add keys; or EMBEDDINGS_PROVIDER=dev to run keyless
 uv sync
 uv run python scripts/init_db.py
-uv run python -m janawaaz.pipeline.runner --limit 5   # sweep → parse → match → gate
-uv run uvicorn janawaaz.web.app:app --reload          # POST /users, GET /feed, GET /ledger/{id}
+uv run python scripts/seed_corpus.py  # real TRAI + SEBI papers through the real pipeline
+uv run python -m janawaaz.pipeline.runner --limit 5   # one full local sweep
+uv run uvicorn janawaaz.web.app:app --reload           # product UI on :8000
 ```
 
-## Sponsor tech
+Tests: `uv run pytest` — unit suites run anywhere; gate-flow tests use the database and skip cleanly without one. CI runs everything against a pgvector service container.
 
-- **Render**: the pipeline is a Render **Workflows** service (`render_sdk`, `@app.task`, per-task retries) triggered by Render Cron; Render Postgres with pgvector; FastAPI web service on Render. Task-chain and retry screenshots in `docs/` (Day 7).
-- **Sarvam AI**: every alert is translated into the citizen's language (Hindi/Marathi at launch) via the Sarvam API — automatically, for every consultation, not a hand-picked subset.
+## Deploy (Render)
+
+`render.yaml` provisions the web service, the cron trigger, and Postgres. The Workflow service (early access) is created in the dashboard — start command `python main.py` — and Render Cron starts its root task via the API (`scripts/trigger_sweep.py`), since Workflows has no native scheduler yet. Per-task `Retry` config is what turns flaky government sites from an outage into a dashboard entry.
+
+## Sponsor tech, honestly
+
+- **Render Workflows** is the product's spine, not a checkbox: the whole ingestion→gate→notify chain is durable `@app.task`s (`render_sdk`), with retries tuned per task. Plus Render Postgres (pgvector), a Render web service, and Render Cron.
+- **Sarvam AI** makes the vernacular promise real: every alert is machine-translated at send time (Mayura), optionally spoken (Bulbul TTS → Telegram audio) — for *every* consultation, not the hand-picked subset a fellowship team can translate by hand.
+- **Gemini** handles English summaries, match verification, and embeddings (`text-embedding-004`, 768-dim).
 
 ## Who else is in this space
 
-Civis (civis.vote) proved the demand for plain-language consultation summaries — with fellows, interns, and manual deadline tracking. OurGov.in aggregates open laws; MyGov hosts some consultations; Congress.gov/GovTrack offer keyword email alerts (US); enterprise regulatory-intelligence suites (Compliance.ai, FiscalNote) do automated monitoring at enterprise prices, in English. Nobody — at any price — shows *why* you got an alert with cited spans from the source document. That verification layer is JanAwaaz's contribution; everything else here exists so a farmer gets it for free, in her language, without asking.
+| Player | What they do | What's missing |
+|---|---|---|
+| **[Civis](https://www.civis.vote)** | The closest mission-mate: plain-language summaries, translations, WhatsApp outreach. Proved the demand. | Human-powered pipeline (fellows + manual tracking) caps coverage and adds days of latency; broadcast, not matched to you |
+| **OurGov.in** | Aggregates open consultations | A portal you must remember to visit |
+| **MyGov** | Government's own platform | Pull-based, partial coverage |
+| **Congress.gov / GovTrack (US)** | Keyword email alerts | Keyword-only, bills not consultations, English only |
+| **Enterprise reg-intel** (FiscalNote, Compliance.ai) | Real automated monitoring | Five figures a year, built for compliance teams, English only |
+
+**Nobody — at any price — shows why you received an alert with cited spans from the source document.** That verification layer is JanAwaaz's contribution. Everything else here exists so a farmer gets it free, in her language, without asking.
+
+## Limitations (known, not hidden)
+
+- Deadline extraction is regex-first with span verification; unusual phrasings fall back to "deadline unverified — check source" rather than a guess.
+- Open/closed status for SEBI papers is inferred from the extracted deadline (SEBI doesn't expose it).
+- Two sources today; MCA is bot-walled and RBI's listing is JS-rendered — both are adapter candidates via other entry points.
+- Matching quality depends on real embeddings; the keyless `dev` embedder exists for development only.
+
+## Roadmap
+
+More regulators (RBI via alternate feed, MeitY, state governments) · WhatsApp channel · comment-drafting assistance · Civis-style partners running on top of the ledger as an API.
 
 ## License
 

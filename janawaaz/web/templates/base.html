@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}JanAwaaz{% endblock %}</title>
+  <meta name="description" content="The agent that tells you when your government is asking for your opinion — with proof, in your own language, before the window closes.">
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📣</text></svg>">
+</head>
+<body>
+  <header class="site-head">
+    <div class="wrap">
+      <a class="wordmark" href="/">JanAwaaz<span class="devanagari">जन आवाज़</span></a>
+      <nav class="site-nav">
+        <a href="/feed">Open consultations</a>
+        <a href="/#gate">How we verify</a>
+        <a class="cta" href="/onboard">Get alerts</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>{% block content %}{% endblock %}</main>
+
+  <footer class="site-foot">
+    <div class="wrap">
+      <span>JanAwaaz — the agent that tells you when your government is asking.</span>
+      <a href="https://github.com/ankitlade12/janawaaz">Source (MIT)</a>
+      <span>Built for HACKHAZARDS ’26 · Render Workflows · Sarvam AI</span>
+    </div>
+  </footer>
+</body>
+</html>

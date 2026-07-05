@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 
 import httpx
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from janawaaz.adapters import REGISTRY
 from janawaaz.adapters.base import ConsultationRecord
@@ -35,7 +36,12 @@ def upsert_source(s, adapter_name: str) -> Source:
 
 
 def ingest_record(s, src: Source, rec: ConsultationRecord) -> Document | None:
-    """Insert a new document row, or return None if we already have it."""
+    """Insert a new document row, or return None if we already have it.
+
+    The insert runs in a savepoint so a concurrent sweep inserting the same
+    (source_id, external_id) loses only this record, not the whole batch —
+    the unique constraint is the arbiter, not the racy pre-check.
+    """
     exists = s.execute(
         select(Document.id).where(
             Document.source_id == src.id, Document.external_id == rec.external_id
@@ -54,8 +60,13 @@ def ingest_record(s, src: Source, rec: ConsultationRecord) -> Document | None:
         published_at=rec.published_at,
         status=rec.status,
     )
-    s.add(doc)
-    s.flush()
+    try:
+        with s.begin_nested():
+            s.add(doc)
+            s.flush()
+    except IntegrityError:
+        log.info("doc %s/%s inserted concurrently elsewhere; skipping", src.adapter, rec.external_id)
+        return None
     return doc
 
 

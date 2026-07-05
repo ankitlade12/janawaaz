@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Get alerts — JanAwaaz{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <h1>Tell it who you are. Once.</h1>
+    <p>One plain sentence is enough — the agent handles the rest, in your language, for free.</p>
+  </div>
+
+  <form class="form-card" method="post" action="/onboard">
+    <label for="name">Your name</label>
+    <input type="text" id="name" name="name" required maxlength="200" placeholder="e.g. Savita Patil">
+
+    <label for="language">Alert language</label>
+    <select id="language" name="language">
+      <option value="en">English</option>
+      <option value="hi">हिन्दी (Hindi)</option>
+      <option value="mr">मराठी (Marathi)</option>
+    </select>
+
+    <label for="interests_text">What should we watch for you?</label>
+    <textarea id="interests_text" name="interests_text" rows="4" required minlength="10" maxlength="2000"
+      placeholder="e.g. I run a small textile export business in Surat — customs rules, MSME compliance, and power tariffs affect me."></textarea>
+    <p class="hint">Describe your work and life in your own words — no categories to pick, no forms within forms.</p>
+
+    <label for="telegram_chat_id">Telegram chat ID <span style="font-weight:400;color:var(--ink-3);">(optional, needed for push alerts)</span></label>
+    <input type="text" id="telegram_chat_id" name="telegram_chat_id" maxlength="80" placeholder="e.g. 123456789">
+    <p class="hint">Message <strong>@userinfobot</strong> on Telegram and it replies with your ID. Leave empty to use the web feed only.</p>
+
+    <button type="submit">Start watching for me</button>
+  </form>
+</div>
+{% endblock %}

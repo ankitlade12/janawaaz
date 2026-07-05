@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Open consultations — JanAwaaz{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <h1>Consultations</h1>
+    <p>Every paper JanAwaaz is tracking, with extracted deadlines and where to comment.</p>
+    <div class="filters">
+      <a href="/feed" class="{{ 'active' if not source_filter }}">All sources</a>
+      {% for s in sources %}
+      <a href="/feed?source={{ s }}" class="{{ 'active' if source_filter == s }}">{{ s | upper }}</a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="doc-list">
+    {% for item in items %}
+    <article class="doc-card">
+      <div class="meta">
+        <span class="badge source">{{ item.source | upper }}</span>
+        {% if item.published_at %}<span class="dot">·</span><span class="ministry">{{ item.published_at.strftime("%d %b %Y") }}</span>{% endif %}
+        {% if item.ministry %}<span class="dot">·</span><span class="ministry">{{ item.ministry }}</span>{% endif %}
+      </div>
+      <h3>{{ item.title }}</h3>
+      {% if item.summary_en %}<p class="summary">{{ item.summary_en }}</p>{% endif %}
+      <div class="foot">
+        {% if item.deadline and not item.deadline_verified %}
+          <span class="chip unverified">deadline unverified — check source · {{ item.deadline.strftime("%d %b %Y") }}</span>
+        {% elif item.deadline and item.days_remaining is not none and item.days_remaining < 0 %}
+          <span class="chip closed">closed {{ item.deadline.strftime("%d %b %Y") }}</span>
+        {% elif item.deadline and item.days_remaining <= 3 %}
+          <span class="chip urgent">⏳ {{ item.days_remaining }} day{{ '' if item.days_remaining == 1 else 's' }} left · {{ item.deadline.strftime("%d %b %Y") }}</span>
+        {% elif item.deadline and item.days_remaining <= 14 %}
+          <span class="chip soon">⏳ {{ item.days_remaining }} days left · {{ item.deadline.strftime("%d %b %Y") }}</span>
+        {% elif item.deadline %}
+          <span class="chip ok">open · comments close {{ item.deadline.strftime("%d %b %Y") }}</span>
+        {% else %}
+          <span class="chip closed">deadline not stated</span>
+        {% endif %}
+        {% if item.comment_channel %}<a href="{{ item.comment_channel }}" rel="noopener">Comment here →</a>{% endif %}
+        {% if item.body_url %}<a href="{{ item.body_url }}" rel="noopener">Read the paper</a>{% endif %}
+      </div>
+    </article>
+    {% else %}
+    <div class="empty">Nothing tracked yet — the next sweep will fill this in.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
