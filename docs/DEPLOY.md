@@ -14,11 +14,11 @@ Everything is blueprint-driven; the only manual step is the Workflow service
 Dashboard → **New → Blueprint** → pick `ankitlade12/janawaaz` → Render reads
 `render.yaml` and provisions:
 
-| Service | What it is |
-|---|---|
-| `janawaaz-web` | FastAPI product UI + API (`uvicorn janawaaz.web.app:app`) |
-| `janawaaz-sweep-trigger` | Cron (every 6h) that starts the workflow root task |
-| `janawaaz-db` | Postgres 16 — pgvector is created by the app (`CREATE EXTENSION IF NOT EXISTS vector`) |
+| Service | Plan | What it is |
+|---|---|---|
+| `janawaaz-web` | free | FastAPI product UI + API (`uvicorn janawaaz.web.app:app`) |
+| `janawaaz-sweep-trigger` | starter (pennies) | Cron (every 6h) that starts the workflow root task. **Optional** — deselect it and use the free GitHub Actions scheduler instead (`.github/workflows/sweep-trigger.yml`; set repo secret `RENDER_API_KEY`). |
+| `janawaaz-db` | free | Postgres 16 — pgvector is created by the app (`CREATE EXTENSION IF NOT EXISTS vector`) |
 
 Set the `sync: false` env vars when prompted:
 

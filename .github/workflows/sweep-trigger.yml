@@ -1,0 +1,30 @@
+name: Sweep trigger
+
+# Free alternative to the Render cron: starts the Render Workflows root task
+# (sweep_sources) on a schedule via the Render API. The workflow chain itself
+# still runs entirely on Render — this is only the alarm clock.
+#
+# Requires repo secret RENDER_API_KEY (Settings -> Secrets -> Actions).
+# Exits quietly when the secret isn't configured yet.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start sweep_sources on Render Workflows
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SWEEP_TASK: janawaaz-workflows/sweep_sources
+        run: |
+          if [ -z "$RENDER_API_KEY" ]; then
+            echo "RENDER_API_KEY secret not configured; skipping."
+            exit 0
+          fi
+          pip install --quiet render-sdk
+          python scripts/trigger_sweep.py
