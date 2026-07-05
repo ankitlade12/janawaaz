@@ -12,7 +12,7 @@
       <span class="badge source">{{ source_name | upper }}</span>
     </div>
     <h2>{{ doc.title }}</h2>
-    {% if doc.summary_en %}<p style="color:var(--ink-2);">{{ doc.summary_en }}</p>{% endif %}
+    {% if doc.summary_en %}<p style="color:var(--ink-2);">{{ doc.summary_en | plaintext }}</p>{% endif %}
     {% if doc.deadline %}
       <p><strong>Extracted deadline:</strong> {{ doc.deadline.strftime("%d %B %Y") }}
       {% if doc.deadline_verified %} <span class="badge t1">span-verified</span>{% else %} <span class="badge t2">unverified</span>{% endif %}</p>

@@ -22,7 +22,7 @@
         {% if item.ministry %}<span class="dot">·</span><span class="ministry">{{ item.ministry }}</span>{% endif %}
       </div>
       <h3>{{ item.title }}</h3>
-      {% if item.summary_en %}<p class="summary">{{ item.summary_en }}</p>{% endif %}
+      {% if item.summary_en %}<p class="summary">{{ item.summary_en | plaintext }}</p>{% endif %}
       <div class="foot">
         {% if item.deadline and not item.deadline_verified %}
           <span class="chip unverified">deadline unverified — check source · {{ item.deadline.strftime("%d %b %Y") }}</span>

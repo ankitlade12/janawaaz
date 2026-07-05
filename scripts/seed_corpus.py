@@ -41,11 +41,16 @@ def backfill() -> None:
     from sqlalchemy import or_, select
 
     from janawaaz.models import Document
+    from janawaaz.pipeline import summarize
 
     with session() as s:
         docs = s.execute(
             select(Document).where(
-                or_(Document.body_text.is_(None), Document.embedding.is_(None))
+                or_(
+                    Document.body_text.is_(None),
+                    Document.embedding.is_(None),
+                    Document.summary_en.is_(None),
+                )
             )
         ).scalars().all()
         log.info("backfill: %s documents to finish", len(docs))
@@ -55,6 +60,14 @@ def backfill() -> None:
                     runner.parse_document(s, doc)
                 if doc.embedding is None:
                     runner.summarize_and_embed(s, doc)
+                if (
+                    doc.summary_en is None
+                    and doc.body_text
+                    and settings().llm_provider != "none"
+                ):
+                    doc.summary_en = summarize.summarize_en(doc.body_text, doc.title)
+                    log.info("backfill: doc %s summarized", doc.id)
+                s.commit()  # keep progress if a later doc fails
             except Exception:
                 log.exception("backfill: doc %s failed; continuing", doc.id)
 

@@ -85,29 +85,48 @@ VERIFIER_SCHEMA = {
 
 
 def _verifier_raw(profile: str, doc_blob: str) -> dict:
-    """One verifier call -> parsed dict, routed by provider."""
+    """One verifier call -> parsed dict. Claude first, Gemini failover —
+    an exhausted credit balance must not silence the gate."""
     cfg = settings()
     prompt = VERIFIER_PROMPT.format(profile=profile, doc=doc_blob)
 
     if cfg.llm_provider == "claude":
-        import anthropic
+        try:
+            import anthropic
 
-        client = anthropic.Anthropic(api_key=cfg.anthropic_api_key)
-        resp = client.messages.create(
-            model=cfg.claude_model,
-            max_tokens=1024,
-            output_config={"format": {"type": "json_schema", "schema": VERIFIER_SCHEMA}},
-            messages=[{"role": "user", "content": prompt}],
-        )
-        if resp.stop_reason == "refusal":
-            raise RuntimeError("verifier request declined")
-        raw = next(b.text for b in resp.content if b.type == "text")
-        return json.loads(raw)
+            client = anthropic.Anthropic(api_key=cfg.anthropic_api_key)
+            resp = client.messages.create(
+                model=cfg.claude_model,
+                max_tokens=1024,
+                output_config={"format": {"type": "json_schema", "schema": VERIFIER_SCHEMA}},
+                messages=[{"role": "user", "content": prompt}],
+            )
+            if resp.stop_reason == "refusal":
+                raise RuntimeError("verifier request declined")
+            raw = next(b.text for b in resp.content if b.type == "text")
+            return json.loads(raw)
+        except Exception as exc:
+            if not cfg.gemini_api_key:
+                raise
+            log.warning("claude verifier failed (%s); falling back to gemini", exc)
+
+    import time
 
     from google import genai
+    from google.genai import errors as genai_errors
 
     client = genai.Client(api_key=cfg.gemini_api_key)
-    resp = client.models.generate_content(model=cfg.gemini_model, contents=prompt)
+    for attempt in range(4):
+        try:
+            resp = client.models.generate_content(model=cfg.gemini_model, contents=prompt)
+            break
+        except genai_errors.ClientError as exc:
+            # free tier is 5 generate-calls/min — wait out the window
+            if exc.code == 429 and attempt < 3:
+                log.info("verifier rate limit; sleeping 50s (attempt %s)", attempt + 1)
+                time.sleep(50)
+                continue
+            raise
     raw = (resp.text or "").strip()
     raw = re.sub(r"^```(?:json)?|```$", "", raw, flags=re.MULTILINE).strip()
     return json.loads(raw)

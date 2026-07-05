@@ -10,6 +10,7 @@ JSON API (same data, machine-shaped):
   POST /api/users · GET /api/feed · GET /api/ledger/{id} · GET /healthz
 """
 
+import re
 from datetime import date
 from pathlib import Path
 
@@ -31,6 +32,19 @@ app = FastAPI(title="JanAwaaz", version="0.2.0")
 _BASE = Path(__file__).parent
 templates = Jinja2Templates(directory=_BASE / "templates")
 app.mount("/static", StaticFiles(directory=_BASE / "static"), name="static")
+
+
+def _plaintext(value: str | None) -> str:
+    """Flatten LLM markdown (bold, headings, bullets) into clean prose for cards."""
+    if not value:
+        return ""
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", value)
+    text = re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*[-*]\s+", "", text, flags=re.MULTILINE)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+templates.env.filters["plaintext"] = _plaintext
 
 LANGUAGE_LABELS = {"en": "English", "hi": "Hindi (हिन्दी)", "mr": "Marathi (मराठी)"}
 

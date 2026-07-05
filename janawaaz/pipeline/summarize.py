@@ -17,12 +17,14 @@ log = logging.getLogger(__name__)
 
 SUMMARY_PROMPT = """You summarize Indian government consultation papers for ordinary citizens.
 
-Write a plain-English summary of at most 150 words structured as:
-1) What is being proposed (1-2 sentences).
-2) Who is affected and what changes for them ("what changes for whom").
-3) Why it matters now.
+Write a plain-English summary of at most 150 words as ONE flowing paragraph covering:
+what is being proposed, who is affected and what changes for them, and why it
+matters now.
 
-No jargon, no acronyms without expansion, no preamble. Text of the consultation:
+Plain prose only — no markdown, no asterisks, no headings, no bullet points,
+no preamble like "Summary:". No jargon; expand acronyms on first use.
+
+Text of the consultation:
 
 {text}"""
 
@@ -37,23 +39,29 @@ def _gemini_client():
 
 
 def summarize_en(text: str, title: str) -> str:
-    """LLM plain-English summary, routed to whichever provider has a key."""
+    """LLM plain-English summary. Tries Claude first, fails over to Gemini —
+    a dead key or exhausted credit balance must degrade, not halt, the sweep."""
     cfg = settings()
     prompt = SUMMARY_PROMPT.format(text=f"TITLE: {title}\n\n{text[:60000]}")
 
     if cfg.llm_provider == "claude":
-        import anthropic
+        try:
+            import anthropic
 
-        client = anthropic.Anthropic(api_key=cfg.anthropic_api_key)
-        resp = client.messages.create(
-            model=cfg.claude_model,
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        if resp.stop_reason == "refusal":
-            log.warning("claude declined summary for %r", title[:60])
-            return ""
-        return "".join(b.text for b in resp.content if b.type == "text").strip()
+            client = anthropic.Anthropic(api_key=cfg.anthropic_api_key)
+            resp = client.messages.create(
+                model=cfg.claude_model,
+                max_tokens=2048,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            if resp.stop_reason == "refusal":
+                log.warning("claude declined summary for %r", title[:60])
+                return ""
+            return "".join(b.text for b in resp.content if b.type == "text").strip()
+        except Exception as exc:
+            if not cfg.gemini_api_key:
+                raise
+            log.warning("claude summary failed (%s); falling back to gemini", exc)
 
     client = _gemini_client()
     resp = client.models.generate_content(model=cfg.gemini_model, contents=prompt)
@@ -61,12 +69,48 @@ def summarize_en(text: str, title: str) -> str:
 
 
 def embed(text: str) -> list[float]:
+    return embed_many([text])[0]
+
+
+def embed_many(texts: list[str]) -> list[list[float]]:
+    """Batch embeddings — one API call per chunk keeps free-tier rate limits happy.
+
+    Model: gemini-embedding-001 truncated to 768 dims (matches vector(768));
+    truncated vectors are re-normalized per Google's guidance.
+    """
     provider = settings().embeddings_provider
     if provider == "dev":
-        return _dev_embedding(text)
+        return [_dev_embedding(t) for t in texts]
+
+    import time
+
+    from google.genai import errors as genai_errors
+    from google.genai import types
+
     client = _gemini_client()
-    resp = client.models.embed_content(model="text-embedding-004", contents=text[:9000])
-    return list(resp.embeddings[0].values)
+    out: list[list[float]] = []
+    for i in range(0, len(texts), 20):
+        chunk = [t[:9000] for t in texts[i : i + 20]]
+        for attempt in range(6):
+            try:
+                resp = client.models.embed_content(
+                    model="gemini-embedding-001",
+                    contents=chunk,
+                    config=types.EmbedContentConfig(output_dimensionality=EMBEDDING_DIM),
+                )
+                break
+            except genai_errors.ClientError as exc:
+                # free tier: 100 embed units/minute — wait out the window and retry
+                if exc.code == 429 and attempt < 5:
+                    log.info("embedding rate limit; sleeping 30s (attempt %s)", attempt + 1)
+                    time.sleep(30)
+                    continue
+                raise
+        for e in resp.embeddings:
+            v = list(e.values)
+            norm = math.sqrt(sum(x * x for x in v)) or 1.0
+            out.append([x / norm for x in v])
+    return out
 
 
 def _dev_embedding(text: str) -> list[float]:
