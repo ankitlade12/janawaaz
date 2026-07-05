@@ -37,9 +37,26 @@ def _gemini_client():
 
 
 def summarize_en(text: str, title: str) -> str:
-    client = _gemini_client()
+    """LLM plain-English summary, routed to whichever provider has a key."""
+    cfg = settings()
     prompt = SUMMARY_PROMPT.format(text=f"TITLE: {title}\n\n{text[:60000]}")
-    resp = client.models.generate_content(model=settings().gemini_model, contents=prompt)
+
+    if cfg.llm_provider == "claude":
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=cfg.anthropic_api_key)
+        resp = client.messages.create(
+            model=cfg.claude_model,
+            max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        if resp.stop_reason == "refusal":
+            log.warning("claude declined summary for %r", title[:60])
+            return ""
+        return "".join(b.text for b in resp.content if b.type == "text").strip()
+
+    client = _gemini_client()
+    resp = client.models.generate_content(model=cfg.gemini_model, contents=prompt)
     return (resp.text or "").strip()
 
 

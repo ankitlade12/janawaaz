@@ -70,23 +70,57 @@ def span_in_text(span: str, text: str) -> bool:
     return _normalize(span) in _normalize(text)
 
 
-def verify_match(profile: str, doc_title: str, doc_summary: str, doc_text: str) -> Verdict:
+# Structured-output schema for the Claude verifier: the API guarantees the
+# response is valid JSON matching this shape, so no fence-stripping is needed.
+VERIFIER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "affects": {"type": "string", "enum": ["yes", "no"]},
+        "reason": {"type": "string"},
+        "evidence_span": {"type": "string"},
+    },
+    "required": ["affects", "reason", "evidence_span"],
+    "additionalProperties": False,
+}
+
+
+def _verifier_raw(profile: str, doc_blob: str) -> dict:
+    """One verifier call -> parsed dict, routed by provider."""
     cfg = settings()
-    if not cfg.gemini_api_key:
-        return Verdict("skipped", "verifier not configured", None, False)
+    prompt = VERIFIER_PROMPT.format(profile=profile, doc=doc_blob)
+
+    if cfg.llm_provider == "claude":
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=cfg.anthropic_api_key)
+        resp = client.messages.create(
+            model=cfg.claude_model,
+            max_tokens=1024,
+            output_config={"format": {"type": "json_schema", "schema": VERIFIER_SCHEMA}},
+            messages=[{"role": "user", "content": prompt}],
+        )
+        if resp.stop_reason == "refusal":
+            raise RuntimeError("verifier request declined")
+        raw = next(b.text for b in resp.content if b.type == "text")
+        return json.loads(raw)
 
     from google import genai
 
     client = genai.Client(api_key=cfg.gemini_api_key)
+    resp = client.models.generate_content(model=cfg.gemini_model, contents=prompt)
+    raw = (resp.text or "").strip()
+    raw = re.sub(r"^```(?:json)?|```$", "", raw, flags=re.MULTILINE).strip()
+    return json.loads(raw)
+
+
+def verify_match(profile: str, doc_title: str, doc_summary: str, doc_text: str) -> Verdict:
+    cfg = settings()
+    if cfg.llm_provider == "none":
+        return Verdict("skipped", "verifier not configured", None, False)
+
     doc_blob = f"TITLE: {doc_title}\n\nSUMMARY: {doc_summary}\n\nEXCERPT:\n{doc_text[:20000]}"
     try:
-        resp = client.models.generate_content(
-            model=cfg.gemini_model,
-            contents=VERIFIER_PROMPT.format(profile=profile, doc=doc_blob),
-        )
-        raw = (resp.text or "").strip()
-        raw = re.sub(r"^```(?:json)?|```$", "", raw, flags=re.MULTILINE).strip()
-        data = json.loads(raw)
+        data = _verifier_raw(profile, doc_blob)
     except Exception as exc:  # malformed output or API failure -> weak verification
         log.warning("verifier failed: %s", exc)
         return Verdict("skipped", f"verifier error: {exc}", None, False)

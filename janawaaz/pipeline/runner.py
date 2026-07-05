@@ -100,10 +100,10 @@ def parse_document(s, doc: Document) -> None:
 def summarize_and_embed(s, doc: Document) -> None:
     cfg = settings()
     base_text = doc.body_text or doc.title
-    if cfg.gemini_api_key:
+    if cfg.llm_provider != "none":
         doc.summary_en = summarize.summarize_en(base_text, doc.title)
     else:
-        log.info("doc %s: GEMINI_API_KEY unset; skipping summary", doc.id)
+        log.info("doc %s: no LLM key set; skipping summary", doc.id)
     doc.embedding = summarize.embed(f"{doc.title}\n\n{doc.summary_en or base_text[:2000]}")
 
 

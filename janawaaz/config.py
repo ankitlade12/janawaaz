@@ -10,9 +10,23 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://janawaaz:janawaaz@localhost:5433/janawaaz"
 
+    # LLM (summaries + match verifier): Claude or Gemini — whichever key is set.
+    # Claude is preferred when both are present. Embeddings are separate:
+    # Anthropic has no embeddings endpoint, so vectors come from Gemini
+    # text-embedding-004 (768-dim) or the dev fallback.
+    anthropic_api_key: str = ""
+    claude_model: str = "claude-opus-4-8"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
     embeddings_provider: str = "gemini"  # "gemini" | "dev" (offline fallback, dev only)
+
+    @property
+    def llm_provider(self) -> str:
+        if self.anthropic_api_key:
+            return "claude"
+        if self.gemini_api_key:
+            return "gemini"
+        return "none"
 
     sarvam_api_key: str = ""
     telegram_bot_token: str = ""
