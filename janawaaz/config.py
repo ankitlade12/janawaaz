@@ -37,7 +37,11 @@ class Settings(BaseSettings):
     voice_alerts: bool = False
     sarvam_tts_speaker: str = "anushka"
 
-    similarity_threshold: float = 0.30
+    # gemini-embedding-001 has a high similarity floor (~0.5 even for unrelated
+    # same-domain text); 0.50 keeps the verifier working on plausible pairs only.
+    similarity_threshold: float = 0.50
+    # Hard cap on verifier calls per document — bounded LLM spend per sweep.
+    max_gate_candidates: int = 20
     # Tier 1 requires the LLM verifier to confirm AND return a span found verbatim
     # in the document text; similarity alone can never push past Tier 2.
     alert_languages: str = "hi,mr"

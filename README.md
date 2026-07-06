@@ -2,6 +2,8 @@
 
 > **The agent that tells you when your government is asking for your opinion — with proof, in your own language, before the window closes.**
 
+**Live:** [janawaaz-web.onrender.com](https://janawaaz-web.onrender.com)
+
 [![CI](https://github.com/ankitlade12/janawaaz/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitlade12/janawaaz/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
@@ -14,7 +16,7 @@
 
 India's Pre-Legislative Consultation Policy (2014) requires ministries to publish draft laws for 30 days of public comment. Regulators — TRAI, SEBI, RBI — run continuous consultation streams on rules that change crop insurance, telecom tariffs, and how your data is used. In practice the comment boxes fill with industry lobbyists, because **ordinary citizens never learn a consultation exists until it has closed**.
 
-In 2015, TRAI's net-neutrality consultation nearly passed unnoticed. The ones since mostly have. **Discovery is the broken step, not access.**
+In 2015, TRAI's net-neutrality consultation was a 118-page paper with an obscure title ("Regulatory Framework for OTT Services") — the official comments table lists just 27 institutional submissions. It took a viral comedy video and a volunteer team hand-condensing the paper into plain language to wake the country up; a million emails followed. Most consultations never get a viral video. **Discovery and translation are the broken steps, not access — JanAwaaz automates exactly what those volunteers did by hand.**
 
 ## What JanAwaaz does
 
@@ -110,7 +112,7 @@ Tests: `uv run pytest` — unit suites run anywhere; gate-flow tests use the dat
 | **OurGov.in** | Aggregates open consultations | A portal you must remember to visit |
 | **MyGov** | Government's own platform | Pull-based, partial coverage |
 | **Congress.gov / GovTrack (US)** | Keyword email alerts | Keyword-only, bills not consultations, English only |
-| **Enterprise reg-intel** (FiscalNote, Compliance.ai) | Real automated monitoring | Five figures a year, built for compliance teams, English only |
+| **Enterprise reg-intel** (FiscalNote PolicyNote, Compliance.ai, Wolters Kluwer Compliance Intelligence '25) | Real automated monitoring; semantic document matching is table stakes here | Five figures a year, built for compliance teams, English only — and none advertise cited-evidence verification for their AI alerts |
 
 **Nobody — at any price — shows why you received an alert with cited spans from the source document.** That verification layer is JanAwaaz's contribution. Everything else here exists so a farmer gets it free, in her language, without asking.
 
@@ -123,7 +125,7 @@ Tests: `uv run pytest` — unit suites run anywhere; gate-flow tests use the dat
 
 ## Roadmap
 
-More regulators (RBI via alternate feed, MeitY, state governments) · WhatsApp channel · comment-drafting assistance · Civis-style partners running on top of the ledger as an API.
+More regulators (MeitY, state governments) · WhatsApp channel (per-message template pricing since Jul 2025 — costed, not assumed) · missed-call IVR voice access for non-smartphone users (the Mobile Vaani pattern) · **consent-first** comment-drafting help — never automated submission; the FCC's 18-million-fake-comments scandal is the cautionary tale, and it's why every JanAwaaz alert carries verifiable evidence in the first place · Civis-style partners running on top of the ledger as an API.
 
 ## License
 

@@ -71,10 +71,10 @@ def ingest_record(s, src: Source, rec: ConsultationRecord) -> Document | None:
 
 
 def parse_document(s, doc: Document) -> None:
-    """Download the body (PDF expected), extract text + deadline with evidence span."""
+    """Download the body (PDF or HTML page), extract text + deadline with evidence span."""
     cfg = settings()
-    if not doc.body_url or not doc.body_url.lower().split("?")[0].endswith(".pdf"):
-        log.info("doc %s: no PDF body (%s); skipping text extraction", doc.id, doc.body_url)
+    if not doc.body_url or not doc.body_url.startswith("http"):
+        log.info("doc %s: no fetchable body (%s); skipping text extraction", doc.id, doc.body_url)
         return
     resp = httpx.get(
         doc.body_url,
@@ -83,7 +83,11 @@ def parse_document(s, doc: Document) -> None:
         follow_redirects=True,
     )
     resp.raise_for_status()
-    doc.body_text = extract.pdf_text(resp.content)
+    content_type = resp.headers.get("content-type", "")
+    if doc.body_url.lower().split("?")[0].endswith(".pdf") or "pdf" in content_type:
+        doc.body_text = extract.pdf_text(resp.content)
+    else:
+        doc.body_text = extract.html_text(resp.text)
     doc.content_hash = hashlib.sha256(resp.content).hexdigest()
 
     found = extract.extract_deadline(doc.body_text, published_after=doc.published_at)
@@ -108,9 +112,21 @@ def summarize_and_embed(s, doc: Document) -> None:
 
 
 def match_and_notify(s, doc: Document, skip_notify: bool = False) -> None:
+    """Gate only plausible candidates: above threshold, best-first, capped.
+
+    Sub-threshold pairs are skipped without a ledger row — the ledger records
+    decisions about candidates, not the cross product of all users and papers.
+    """
     if doc.embedding is None:
         return
-    for user, sim in matching.candidates_for_document(s, doc):
+    cfg = settings()
+    candidates = [
+        (user, sim)
+        for user, sim in matching.candidates_for_document(s, doc)
+        if sim >= cfg.similarity_threshold
+    ][: cfg.max_gate_candidates]
+    log.info("doc %s: %s candidates above %.2f", doc.id, len(candidates), cfg.similarity_threshold)
+    for user, sim in candidates:
         ledger = matching.gate_match(s, doc, user, sim)
         if ledger.tier == 1 and not skip_notify:
             notify.send_alert(s, doc, user, ledger)

@@ -4,7 +4,7 @@
 
 ---
 
-In 2015, TRAI's net-neutrality consultation nearly slipped past the Indian public. Since then, hundreds of consultations — crop insurance rules, broadband tariffs, mutual-fund regulations — have opened for public comment and closed again, with the comment boxes filled almost entirely by industry lobbyists. Not because citizens don't care. Because **nobody told them the window was open**.
+In 2015, TRAI published a 118-page consultation with the unassuming title "Regulatory Framework for OTT Services" — the paper that could have ended net neutrality in India. Its official comments table lists just 27 institutional submissions. What actually saved net neutrality was a viral AIB video and a volunteer team at savetheinternet.in who condensed those 118 pages into plain language people could act on; a million emails followed. Since then, hundreds of consultations — crop insurance rules, broadband tariffs, mutual-fund regulations — have opened and closed without their viral video, comment boxes filled almost entirely by industry. Not because citizens don't care. Because **nobody told them, in words they could use, that the window was open**.
 
 We built [JanAwaaz](https://github.com/ankitlade12/janawaaz) (जन आवाज़, "people's voice") at HACKHAZARDS '26 to fix the discovery step: a durable agent that watches every consultation source, matches new papers to what *you* told it you care about, and pushes an alert in your language — with the deadline, a link to comment, and something no other tool at any price point offers: **proof**.
 

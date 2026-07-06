@@ -11,8 +11,8 @@ HACKHAZARDS '26 · Render Workflows · Sarvam AI · Public Systems & Civic Tech
 ## 2. The problem — discovery is broken, not access
 **Rules that change your life open for public comment — and close before you hear about them.**
 - India's 2014 pre-legislative policy mandates 30-day comment windows; TRAI/SEBI/RBI run continuous streams
-- In 2015 the net-neutrality consultation nearly passed unnoticed; the ones since mostly have
-- Comment boxes fill with lobbyists because citizens never learn the window existed
+- 2015 net neutrality: a 118-page paper, 27 official submissions — until a viral video + volunteers translating it by hand drove 1M emails. Most consultations never get that video
+- Comment boxes fill with lobbyists because citizens never learn the window existed — JanAwaaz automates what those volunteers did by hand
 
 ## 3. What we built
 **A durable agent that watches, matches, verifies, and speaks your language.**

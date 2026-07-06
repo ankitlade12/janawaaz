@@ -62,6 +62,17 @@ def pdf_text(data: bytes) -> str:
         return "\n".join(page.get_text() for page in doc)
 
 
+def html_text(markup: str) -> str:
+    """Extract readable text from an HTML page (RBI/SEBI detail pages)."""
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(markup, "lxml")
+    for tag in soup(["script", "style", "nav", "header", "footer"]):
+        tag.decompose()
+    text = soup.get_text("\n")
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
 def _parse_date_match(m: re.Match, pattern: re.Pattern) -> date | None:
     try:
         if pattern is _NUMERIC_DATE:
