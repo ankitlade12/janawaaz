@@ -14,11 +14,11 @@ HACKHAZARDS '26 · Render Workflows · Sarvam AI · Public Systems & Civic Tech
 - 2015 net neutrality: a 118-page paper, 27 official submissions — until a viral video + volunteers translating it by hand drove 1M emails. Most consultations never get that video
 - Comment boxes fill with lobbyists because citizens never learn the window existed — JanAwaaz automates what those volunteers did by hand
 
-## 3. What we built
+## 3. What we built — and who it's for
 **A durable agent that watches, matches, verifies, and speaks your language.**
-- Tell it who you are once, in one plain sentence
-- It sweeps every source daily, extracts deadlines with quoted evidence, matches semantically
-- Tier-1 verified matches push to Telegram in English / हिन्दी / मराठी — with the deadline and where to comment
+- Tell it who you are once, in one plain sentence; verified matches push to Telegram in English / हिन्दी / मराठी
+- First users: the intermediary layer that does this by hand today — civic orgs, journalists, associations, unions — plus motivated citizens
+- 2015 proved the mechanism: translate + alert → a million act. The intermediary layer just doesn't scale by hand. Now it does
 
 ## 4. The gate — every alert shows its work (demo: /ledger)
 **If we can't prove the match, we don't wake you up.**

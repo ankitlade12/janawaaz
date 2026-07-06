@@ -28,6 +28,10 @@ You describe yourself once, in one plain sentence — *"I run a small textile ex
 4. **Gates** every candidate match — the part nobody else does (below).
 5. **Alerts** you on Telegram in English, हिन्दी or मराठी via Sarvam AI — with the deadline, what changes for you, where to comment, and the quoted evidence for *why you* got the alert. Optional voice alerts (Sarvam Bulbul TTS) for users who can't comfortably read them.
 
+## Who this is for, honestly
+
+Not "every farmer will install a Telegram bot" — civic-tech adoption research (Mobile Vaani, 100K rural users at peak) shows software alone doesn't reach low-literacy users; offline intermediaries do. JanAwaaz's realistic first users are **the intermediary layer that already does this work by hand**: organizations like Civis (fellows + Trello), journalists, bar and MSME associations, unions, student groups, researchers — plus individually motivated citizens. The 2015 net-neutrality win is the existence proof: when volunteers translated and alerted, a million people acted. The bottleneck was never citizens' willingness — it was that the intermediary layer doesn't scale by hand. JanAwaaz is infrastructure for that layer, free.
+
 ## The gate — every alert shows its work
 
 Embedding similarity alone fires garbage: *"interested in agriculture"* matches a telecom tariff paper because both mention "rural". So no alert is sent on similarity alone:
