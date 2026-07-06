@@ -43,7 +43,15 @@
       </div>
     </article>
     {% else %}
-    <div class="empty">Nothing tracked yet — the next sweep will fill this in.</div>
+    <div class="empty">
+      {% if source_filter %}
+        JanAwaaz is watching {{ source_filter | upper }} — nothing consultation-shaped in its
+        streams right now. That's what monitoring looks like on a quiet week; the agent re-checks
+        every 6 hours.
+      {% else %}
+        Nothing tracked yet — the next sweep will fill this in.
+      {% endif %}
+    </div>
     {% endfor %}
   </div>
 </div>

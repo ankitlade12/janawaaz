@@ -33,3 +33,18 @@ def test_keeps_only_consultation_shaped_titles():
 
 def test_malformed_feed_returns_empty():
     assert rbi.parse_feed("<not-xml") == []
+
+
+def test_draft_listing_parses_real_snapshot():
+    from pathlib import Path
+
+    html = (Path(__file__).parent / "fixtures" / "rbi_drafts.html").read_text()
+    records = rbi.parse_draft_listing(html)
+    assert len(records) >= 2
+    first = records[0]
+    assert first.external_id.startswith("rbi-draft-")
+    assert "Directions" in first.title
+    assert first.comment_channel and "Connect2Regulate" in first.comment_channel.replace(" ", "")
+    assert first.body_url.lower().endswith(".pdf")
+    assert first.ministry.startswith("RBI — ")
+    assert first.published_at is not None and first.published_at.year >= 2025
