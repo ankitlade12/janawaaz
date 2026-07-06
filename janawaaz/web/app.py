@@ -2,9 +2,15 @@
 
 HTML product surface:
   GET  /              landing (live stats, gate explainer)
-  GET  /feed          consultation feed with deadline chips (?source= filter)
+  GET  /feed          consultation feed, closing-soonest first (?source= filter)
+  GET  /c/{id}        shareable consultation page (summary, deadline evidence,
+                      comment CTA, one-tap WhatsApp/Telegram/X share)
   GET  /ledger/{id}   provenance view — why an alert fired (the money shot)
   GET  /onboard       onboarding form; POST /onboard creates the profile
+
+Integration surface for intermediaries (orgs, journalists, associations):
+  GET  /feed.rss       RSS 2.0 — plug into any reader/CMS
+  GET  /deadlines.ics  subscribable calendar of open comment deadlines
 
 JSON API (same data, machine-shaped):
   POST /api/users · GET /api/feed · GET /api/ledger/{id} · GET /healthz
@@ -15,7 +21,7 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -80,6 +86,22 @@ def _feed_rows(source_filter: str | None, limit: int = 100):
             q = q.where(Source.adapter == source_filter)
         rows = s.execute(q).all()
         sources = sorted(s.execute(select(Source.adapter)).scalars().all())
+
+    # Actionability ordering: open consultations closing soonest come first,
+    # then everything else by recency — "what can I still act on?"
+    today = date.today()
+    far = date.max
+
+    def sort_key(row):
+        d, _ = row
+        actionable = d.deadline is not None and d.deadline >= today
+        return (
+            0 if actionable else 1,
+            d.deadline if actionable else far,
+            -(d.published_at or date.min).toordinal(),
+        )
+
+    rows.sort(key=sort_key)
     return rows, sources
 
 
@@ -88,6 +110,7 @@ def feed_page(request: Request, source: str | None = None):
     rows, sources = _feed_rows(source)
     items = [
         {
+            "id": d.id,
             "source": adapter,
             "title": d.title,
             "ministry": d.ministry,
@@ -104,6 +127,105 @@ def feed_page(request: Request, source: str | None = None):
     return templates.TemplateResponse(
         request, "feed.html", {"items": items, "sources": sources, "source_filter": source}
     )
+
+
+@app.get("/c/{doc_id}", response_class=HTMLResponse)
+def consultation_page(request: Request, doc_id: int):
+    """Shareable per-consultation page — the broadcast unit for intermediaries."""
+    from urllib.parse import quote
+
+    with session() as s:
+        doc = s.get(Document, doc_id)
+        if doc is None:
+            raise HTTPException(404, "no such consultation")
+        source_name = s.get(Source, doc.source_id).adapter
+
+    page_url = f"https://janawaaz-web.onrender.com/c/{doc.id}"
+    left = days_remaining(doc.deadline)
+    share_bits = [f"Your government is asking: “{doc.title}”"]
+    if doc.deadline and left is not None and left >= 0:
+        share_bits.append(f"Comments close {doc.deadline.strftime('%d %b %Y')} ({left} days left).")
+    share_bits.append(page_url)
+    share_text = quote(" ".join(share_bits))
+
+    return templates.TemplateResponse(
+        request,
+        "consultation.html",
+        {
+            "doc": doc,
+            "source_name": source_name,
+            "days_remaining": left,
+            "share_whatsapp": f"https://wa.me/?text={share_text}",
+            "share_telegram": f"https://t.me/share/url?url={quote(page_url)}&text={share_text}",
+            "share_x": f"https://twitter.com/intent/tweet?text={share_text}",
+        },
+    )
+
+
+@app.get("/feed.rss")
+def feed_rss():
+    """RSS 2.0 of tracked consultations — for readers, CMSes, org workflows."""
+    from email.utils import format_datetime
+    from datetime import datetime, time as dtime, timezone
+    from xml.sax.saxutils import escape
+
+    rows, _ = _feed_rows(None, limit=50)
+    items = []
+    for d, adapter in rows:
+        link = f"https://janawaaz-web.onrender.com/c/{d.id}"
+        desc_parts = []
+        if d.deadline:
+            state = "verified" if d.deadline_verified else "unverified — check source"
+            desc_parts.append(f"Comments close {d.deadline.strftime('%d %b %Y')} ({state}).")
+        if d.summary_en:
+            desc_parts.append(_plaintext(d.summary_en))
+        pub = format_datetime(
+            datetime.combine(d.published_at or date.today(), dtime(9, 0), tzinfo=timezone.utc)
+        )
+        items.append(
+            f"<item><title>{escape(f'[{adapter.upper()}] {d.title}')}</title>"
+            f"<link>{escape(link)}</link><guid isPermaLink=\"true\">{escape(link)}</guid>"
+            f"<pubDate>{pub}</pubDate>"
+            f"<description>{escape(' '.join(desc_parts))}</description></item>"
+        )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel>'
+        "<title>JanAwaaz — open government consultations</title>"
+        "<link>https://janawaaz-web.onrender.com/feed</link>"
+        "<description>Consultations tracked by JanAwaaz, closing-soonest first, "
+        "with span-verified deadlines.</description>" + "".join(items) + "</channel></rss>"
+    )
+    return Response(content=xml, media_type="application/rss+xml")
+
+
+@app.get("/deadlines.ics")
+def deadlines_ics():
+    """Subscribable calendar of open comment deadlines — orgs live in calendars."""
+    rows, _ = _feed_rows(None, limit=200)
+    today = date.today()
+    events = []
+    for d, adapter in rows:
+        if not d.deadline or d.deadline < today:
+            continue
+        day = d.deadline.strftime("%Y%m%d")
+        title = f"Comments close: {d.title[:120]}"
+        events.append(
+            "BEGIN:VEVENT\r\n"
+            f"UID:doc{d.id}@janawaaz\r\n"
+            f"DTSTART;VALUE=DATE:{day}\r\n"
+            f"SUMMARY:{_ics_escape(f'[{adapter.upper()}] {title}')}\r\n"
+            f"DESCRIPTION:{_ics_escape(f'https://janawaaz-web.onrender.com/c/{d.id}')}\r\n"
+            "END:VEVENT\r\n"
+        )
+    cal = (
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//JanAwaaz//consultation deadlines//EN\r\n"
+        "X-WR-CALNAME:JanAwaaz consultation deadlines\r\n" + "".join(events) + "END:VCALENDAR\r\n"
+    )
+    return Response(content=cal, media_type="text/calendar")
+
+
+def _ics_escape(s: str) -> str:
+    return s.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")
 
 
 @app.get("/ledger/{ledger_id}", response_class=HTMLResponse)
