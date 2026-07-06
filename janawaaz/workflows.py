@@ -41,6 +41,8 @@ async def sweep_sources() -> dict:
 @app.task(retry=Retry(max_retries=5, wait_duration_ms=3000, backoff_scaling=2.0))
 async def fetch_source(adapter_name: str) -> dict:
     """Pull one source listing, diff against known documents, chain per-doc tasks."""
+    from datetime import datetime, timezone
+
     adapter = REGISTRY[adapter_name]
     new_ids: list[int] = []
     with session() as s:
@@ -49,6 +51,7 @@ async def fetch_source(adapter_name: str) -> dict:
             doc = runner.ingest_record(s, src, rec)
             if doc is not None:
                 new_ids.append(doc.id)
+        src.last_swept_at = datetime.now(timezone.utc)
     for doc_id in new_ids:
         await parse_document(doc_id)
     return {"source": adapter_name, "new_documents": len(new_ids)}
