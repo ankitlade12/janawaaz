@@ -60,6 +60,14 @@ def test_dotted_numeric_dd_mm_yyyy():
     assert r.deadline == date(2026, 9, 30)
 
 
+def test_rbi_connect2regulate_phrasing():
+    # Real phrasing from RBI's Connect 2 Regulate comment pages.
+    text = "Last date for submission of comments is May 08, 2026."
+    r = extract_deadline(text, published_after=date(2026, 4, 8))
+    assert r.deadline == date(2026, 5, 8)
+    assert r.verified
+
+
 def test_historical_reference_rejected_with_published_after():
     # Real failure seen on TRAI CP_30042026.pdf: the paper cites a 2023
     # consultation's comment window; that date must not become the deadline.

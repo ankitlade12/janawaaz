@@ -91,6 +91,22 @@ def parse_document(s, doc: Document) -> None:
     doc.content_hash = hashlib.sha256(resp.content).hexdigest()
 
     found = extract.extract_deadline(doc.body_text, published_after=doc.published_at)
+    if not found.deadline and doc.comment_channel and doc.comment_channel != doc.body_url:
+        # Some regulators (RBI's Connect 2 Regulate) state the deadline on the
+        # comment page, not inside the document. Same extractor, same evidence rules.
+        try:
+            channel = httpx.get(
+                doc.comment_channel,
+                headers={"User-Agent": cfg.user_agent},
+                timeout=cfg.http_timeout_seconds,
+                follow_redirects=True,
+            )
+            channel.raise_for_status()
+            found = extract.extract_deadline(
+                extract.html_text(channel.text), published_after=doc.published_at
+            )
+        except httpx.HTTPError as exc:
+            log.info("doc %s: comment-channel fetch failed (%s)", doc.id, exc)
     if found.deadline:
         doc.deadline = found.deadline
         doc.deadline_span = found.span
