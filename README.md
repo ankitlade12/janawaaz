@@ -315,8 +315,6 @@ janawaaz/
 │   └── workflows.py           # Render Workflows task definitions
 ├── scripts/                   # database init, corpus seed, workflow trigger
 ├── tests/                     # unit and integration test suite
-├── docs/
-│   └── janawaaz-deck.pptx     # submission deck
 ├── .github/workflows/         # CI and six-hour workflow trigger
 ├── docker-compose.yml         # local PostgreSQL + pgvector
 ├── render.yaml                # Render web and database blueprint
