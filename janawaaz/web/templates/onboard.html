@@ -1,13 +1,23 @@
 {% extends "base.html" %}
 {% block title %}Get alerts — JanAwaaz{% endblock %}
 {% block content %}
-<div class="wrap">
-  <div class="page-head">
-    <h1>Tell it who you are. Once.</h1>
-    <p>One plain sentence is enough — the agent handles the rest, in your language, for free.</p>
+<div class="wrap onboard-layout">
+  <div class="onboard-copy">
+    <div class="page-head">
+      <div class="section-kicker">Create your watch profile</div>
+      <h1>Tell us what affects you. We’ll watch the policy landscape.</h1>
+      <p>No categories or complicated forms. Describe your work, community, or interests in plain language.</p>
+    </div>
+    <div class="onboard-benefits">
+      <div><span>01</span><p><strong>Matched to your reality</strong><small>We use the context you provide—not a generic topic subscription.</small></p></div>
+      <div><span>02</span><p><strong>Evidence before interruption</strong><small>Only source-verified matches are eligible for Telegram delivery.</small></p></div>
+      <div><span>03</span><p><strong>You stay in control</strong><small>Connect explicitly, stop alerts anytime, or delete your profile.</small></p></div>
+    </div>
+    <div class="privacy-note"><b>Privacy by default</b><span>Your profile is used only for matching public consultations. We never ask for a phone number.</span></div>
   </div>
 
-  <form class="form-card" method="post" action="/onboard">
+  <form class="form-card onboard-form" method="post" action="/onboard">
+    <div class="form-head"><span>Watch profile</span><small>Takes about 30 seconds</small></div>
     <label for="name">Your name</label>
     <input type="text" id="name" name="name" required maxlength="200" placeholder="e.g. Savita Patil">
 
@@ -21,11 +31,12 @@
     <label for="interests_text">What should we watch for you?</label>
     <textarea id="interests_text" name="interests_text" rows="4" required minlength="10" maxlength="2000"
       placeholder="e.g. I run a small textile export business in Surat — customs rules, MSME compliance, and power tariffs affect me."></textarea>
-    <p class="hint">Describe your work and life in your own words — no categories to pick, no forms within forms.</p>
+    <p class="hint">Specific context improves matching: occupation, sector, location, services you use, or issues you follow.</p>
 
-    <p class="hint">After creating your profile, you’ll connect Telegram with one tap. JanAwaaz never asks you to paste a chat ID or messages anyone without consent.</p>
+    <div class="consent-note"><span>✓</span><p><strong>Consent-first delivery</strong><small>After creating your profile, you’ll connect Telegram with one secure tap.</small></p></div>
 
-    <button type="submit">Create my watch profile</button>
+    <button type="submit">Create my watch profile →</button>
+    <p class="form-footnote">Free to use · Unsubscribe anytime · No spam</p>
   </form>
 </div>
 {% endblock %}

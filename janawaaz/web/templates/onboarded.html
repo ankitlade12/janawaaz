@@ -2,26 +2,27 @@
 {% block title %}You’re in — JanAwaaz{% endblock %}
 {% block content %}
 <div class="wrap">
-  <div class="page-head">
-    <h1>Done, {{ name }}. The agent is watching.</h1>
-    <p>Your profile has been checked against current consultations and will be matched against every new one.</p>
+  <div class="success-shell">
+    <div class="success-icon">✓</div>
+    <div class="section-kicker">Watch profile created</div>
+    <h1>You’re set, {{ name }}.</h1>
+    <p>Your profile is being checked against current consultations and will be matched against every new one.</p>
   </div>
-  <div class="form-card">
-    <p><strong>What happens next</strong></p>
-    <p style="color:var(--ink-2);">
-      When a consultation genuinely affects you — and only when we can quote the document to prove it —
-      you’ll get a Telegram alert in {{ language_label }} with the deadline, what changes for you, and where to comment.
-      Weak matches remain in the audit ledger; they never buzz your phone.
-    </p>
+  <div class="activation-grid">
+  <div class="form-card activation-card">
+    <div class="form-head"><span>Complete alert delivery</span><small>Step 2 of 2</small></div>
+    <p class="activation-copy">Evidence-confirmed matches will arrive in <strong>{{ language_label }}</strong> with the deadline, impact, source quotation, and comment link.</p>
     {% if not has_telegram %}
-    <div class="notice">Push alerts are off until you explicitly connect Telegram.</div>
-    <p><a class="btn primary" href="{{ telegram_link }}" rel="noopener">Connect Telegram securely →</a></p>
+    <div class="notice">Push alerts are currently off. Nothing is sent until you connect.</div>
+    <p><a class="btn primary full" href="{{ telegram_link }}" rel="noopener">Connect Telegram securely →</a></p>
     {% else %}
-    <div class="notice">Telegram is connected. Only evidence-confirmed matches can trigger an alert.</div>
+    <div class="connected-notice"><span>✓</span><p><strong>Telegram connected</strong><small>Only evidence-confirmed matches can trigger an alert.</small></p></div>
     {% endif %}
-    <p><a class="btn ghost" href="/feed">Browse consultations now</a></p>
-    <hr style="margin:28px 0;border:0;border-top:1px solid var(--line);">
-    <p class="hint">You control this profile.</p>
+    <p><a class="btn ghost full" href="/feed">Browse consultations now</a></p>
+  </div>
+  <aside class="profile-controls">
+    <span>Profile controls</span>
+    <p>You remain in control of your data and notifications.</p>
     <div class="btn-row">
       <form method="post" action="/profile/{{ uid }}/unsubscribe">
         <input type="hidden" name="token" value="{{ manage_token }}">
@@ -32,6 +33,7 @@
         <button class="btn ghost" type="submit">Delete my profile</button>
       </form>
     </div>
+  </aside>
   </div>
 </div>
 {% endblock %}

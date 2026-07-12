@@ -3,17 +3,20 @@
 {% block content %}
 <div class="wrap">
   <div class="page-head">
+    <div class="breadcrumb"><a href="/feed">Consultations</a><span>›</span><span>{{ source_name | upper }}</span></div>
     <div class="meta" style="margin-bottom:10px;">
       <span class="badge source">{{ source_name | upper }}</span>
       {% if doc.published_at %}<span class="ministry">published {{ doc.published_at.strftime("%d %b %Y") }}</span>{% endif %}
       {% if doc.ministry %}<span class="ministry">· {{ doc.ministry }}</span>{% endif %}
     </div>
-    <h1 style="font-size:1.6rem;">{{ doc.title }}</h1>
+    <h1 class="consultation-title">{{ doc.title }}</h1>
   </div>
 
-  <div class="ledger-doc">
+  <div class="consultation-grid">
+  <div>
+  <div class="ledger-doc consultation-main">
     {% if doc.deadline and days_remaining is not none and days_remaining >= 0 %}
-      <p style="font-size:1.15rem;"><strong>⏳ Comments close {{ doc.deadline.strftime("%d %B %Y") }} — {{ days_remaining }} day{{ '' if days_remaining == 1 else 's' }} left.</strong>
+      <p class="deadline-lead"><strong>Comments close {{ doc.deadline.strftime("%d %B %Y") }}</strong><span>{{ days_remaining }} day{{ '' if days_remaining == 1 else 's' }} left</span>
       {% if doc.deadline_verified %}<span class="badge t1">span-verified</span>{% else %}<span class="badge t2">unverified — check source</span>{% endif %}</p>
     {% elif doc.deadline %}
       <p><span class="chip closed">This window closed {{ doc.deadline.strftime("%d %B %Y") }}</span> — the paper below still shows what was decided and how these consultations work.</p>
@@ -21,7 +24,7 @@
       <p><span class="chip closed">Deadline not stated in the document — check the source page.</span></p>
     {% endif %}
 
-    {% if doc.summary_en %}<p style="color:var(--ink-2); font-size:1.02rem;">{{ doc.summary_en | plaintext }}</p>{% endif %}
+    {% if doc.summary_en %}<div class="content-label">Plain-language summary</div><p class="consultation-summary">{{ doc.summary_en | plaintext }}</p>{% endif %}
 
     {% if doc.deadline_span %}
     <blockquote class="evidence">“{{ doc.deadline_span }}”
@@ -29,24 +32,26 @@
     </blockquote>
     {% endif %}
 
-    <div class="btn-row" style="margin-top:18px;">
+    <div class="btn-row consultation-actions">
       {% if doc.comment_channel %}<a class="btn primary" href="{{ doc.comment_channel }}" rel="noopener">Submit your comment →</a>{% endif %}
       {% if doc.body_url %}<a class="btn ghost" href="{{ doc.body_url }}" rel="noopener">Read the full paper</a>{% endif %}
     </div>
   </div>
 
-  <div class="ledger-doc">
-    <p style="margin-top:0;"><strong>Spread the word.</strong> In 2015, one shared explainer turned a 118-page paper into a million voices. Same idea, one tap:</p>
+  <div class="ledger-doc share-card">
+    <p><strong>Help this consultation reach the people it affects.</strong><small>Share this plain-language page with your community.</small></p>
     <div class="btn-row">
       <a class="btn ghost" href="{{ share_whatsapp }}" rel="noopener">Share on WhatsApp</a>
       <a class="btn ghost" href="{{ share_telegram }}" rel="noopener">Share on Telegram</a>
       <a class="btn ghost" href="{{ share_x }}" rel="noopener">Share on X</a>
     </div>
   </div>
-
-  <p style="color:var(--ink-3); font-size:0.9rem; padding-bottom:40px;">
-    Want these before the window closes? <a href="/onboard">Get matched alerts</a> ·
-    For organizations: <a href="/feed.rss">RSS</a> · <a href="/deadlines.ics">deadline calendar (.ics)</a>
-  </p>
+  </div>
+  <aside class="consultation-side">
+    <div class="side-card"><span class="content-label">Source</span><strong>{{ source_name | upper }}</strong>{% if doc.ministry %}<small>{{ doc.ministry }}</small>{% endif %}{% if doc.published_at %}<small>Published {{ doc.published_at.strftime("%d %b %Y") }}</small>{% endif %}</div>
+    <div class="side-card"><span class="content-label">Stay ahead</span><strong>Get relevant consultations before they close.</strong><a class="btn primary full" href="/onboard">Create watch profile →</a></div>
+    <div class="side-links"><a href="/feed.rss">RSS feed</a><a href="/deadlines.ics">Calendar</a><a href="/api/feed">API</a></div>
+  </aside>
+  </div>
 </div>
 {% endblock %}

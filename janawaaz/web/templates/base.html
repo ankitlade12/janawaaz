@@ -10,12 +10,16 @@
 </head>
 <body>
   <header class="site-head">
-    <div class="wrap">
-      <a class="wordmark" href="/">JanAwaaz<span class="devanagari">जन आवाज़</span></a>
+    <div class="wrap nav-shell">
+      <a class="wordmark" href="/" aria-label="JanAwaaz home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span><strong>JanAwaaz</strong><small>जन आवाज़</small></span>
+      </a>
       <nav class="site-nav">
-        <a href="/feed">Open consultations</a>
-        <a href="/#gate">How we verify</a>
-        <a class="cta" href="/onboard">Get alerts</a>
+        <a href="/feed">Consultations</a>
+        <a href="/#how">How it works</a>
+        <a href="/#gate">Trust & evidence</a>
+        <a class="cta" href="/onboard">Create watch profile <span>→</span></a>
       </nav>
     </div>
   </header>
@@ -23,11 +27,29 @@
   <main>{% block content %}{% endblock %}</main>
 
   <footer class="site-foot">
-    <div class="wrap">
-      <span>JanAwaaz — the agent that tells you when your government is asking.</span>
-      <a href="https://github.com/ankitlade12/janawaaz">Source (MIT)</a>
-      <span>Built for HACKHAZARDS ’26 · Render Workflows · Sarvam AI</span>
+    <div class="wrap footer-grid">
+      <div class="footer-brand">
+        <a class="wordmark" href="/"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>JanAwaaz</strong><small>जन आवाज़</small></span></a>
+        <p>Verified public-consultation alerts for people and organizations.</p>
+      </div>
+      <div class="footer-links">
+        <strong>Product</strong>
+        <a href="/feed">Consultation feed</a>
+        <a href="/onboard">Get alerts</a>
+        <a href="/feed.rss">RSS feed</a>
+      </div>
+      <div class="footer-links">
+        <strong>Transparency</strong>
+        <a href="/#gate">Evidence gate</a>
+        <a href="/api/feed">Public API</a>
+        <a href="https://github.com/ankitlade12/janawaaz">GitHub · MIT</a>
+      </div>
+      <div class="footer-meta">
+        <span class="live-dot"><i></i> Monitoring active</span>
+        <p>Built with Render Workflows and Sarvam AI for HACKHAZARDS ’26.</p>
+      </div>
     </div>
+    <div class="wrap footer-bottom"><span>© 2026 JanAwaaz</span><span>Public-interest technology, built in India.</span></div>
   </footer>
 </body>
 </html>

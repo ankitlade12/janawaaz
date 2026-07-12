@@ -83,14 +83,26 @@ def landing(request: Request):
             "languages": 3,
         }
         demo_rows = s.execute(
-            select(MatchLedger, Document.title)
+            select(MatchLedger, Document, Source.adapter)
             .join(Document, MatchLedger.document_id == Document.id)
+            .join(Source, Document.source_id == Source.id)
             .where(MatchLedger.tier.in_([1, 3]))
             .order_by(MatchLedger.created_at.desc())
         ).all()
         examples = {}
-        for row, title in demo_rows:
-            examples.setdefault(row.tier, {"id": row.id, "title": title, "tier": row.tier})
+        for row, doc, source_name in demo_rows:
+            examples.setdefault(
+                row.tier,
+                {
+                    "id": row.id,
+                    "title": doc.title,
+                    "summary": doc.summary_en,
+                    "deadline": doc.deadline,
+                    "evidence": row.evidence_span,
+                    "source": source_name.upper(),
+                    "tier": row.tier,
+                },
+            )
     return templates.TemplateResponse(
         request, "landing.html", {"stats": stats, "examples": examples}
     )

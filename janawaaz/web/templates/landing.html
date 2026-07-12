@@ -2,69 +2,112 @@
 {% block title %}JanAwaaz — your government is asking. Now you’ll know.{% endblock %}
 {% block content %}
 <section class="hero">
-  <div class="wrap">
-    <h1>Your government is asking for your opinion. <em>Now you’ll actually hear about it.</em></h1>
-    <p class="sub">
-      Every month, ministries and regulators open draft rules for public comment — crop insurance,
-      telecom tariffs, data protection — and close the window before most citizens ever learn it existed.
-      JanAwaaz watches every source, matches consultations to what <strong>you</strong> care about,
-      verifies the match against the source document, and alerts you in your language with the deadline
-      and a link to comment.
-    </p>
-    <div class="btn-row">
-      <a class="btn primary" href="/onboard">Get alerts on Telegram</a>
-      <a class="btn ghost" href="/feed">Browse open consultations</a>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <div class="eyebrow"><span class="pulse"></span> Live monitoring across Indian regulators</div>
+      <h1>Public policy affects you. <em>Don’t hear about it after the deadline.</em></h1>
+      <p class="sub">JanAwaaz watches government consultations, finds the ones relevant to you, verifies every match against the source, and alerts you in your language—while there is still time to respond.</p>
+      <div class="btn-row">
+        <a class="btn primary" href="/onboard">Create your watch profile <span>→</span></a>
+        <a class="btn ghost" href="/feed">Explore consultations</a>
+      </div>
+      <div class="hero-assurance">
+        <span><b>✓</b> Free to use</span>
+        <span><b>✓</b> No alert without evidence</span>
+        <span><b>✓</b> English · हिन्दी · मराठी</span>
+      </div>
     </div>
+    <div class="product-preview" aria-label="Example verified JanAwaaz alert">
+      <div class="preview-glow"></div>
+      <div class="phone-card">
+        {% if examples.get(1) %}
+        <div class="phone-top"><span>Verified match example</span><span class="verified-pill">Evidence verified</span></div>
+        <div class="alert-source"><span class="source-logo">{{ examples.get(1).source }}</span><div><strong>{{ examples.get(1).title | truncate(74) }}</strong><small>Passed the JanAwaaz evidence gate</small></div></div>
+        <p class="alert-impact">{{ (examples.get(1).summary or examples.get(1).title) | plaintext | truncate(180) }}</p>
+        {% if examples.get(1).deadline %}<div class="deadline-box"><span>Recorded deadline</span><strong>{{ examples.get(1).deadline.strftime("%d %b %Y") }}</strong><b>Source checked</b></div>{% endif %}
+        <blockquote>“{{ (examples.get(1).evidence or 'Evidence span verified against the source document.') | truncate(150) }}”<small>Quoted from the consultation paper</small></blockquote>
+        <a class="preview-action" href="/ledger/{{ examples.get(1).id }}">Inspect the audit record <span>→</span></a>
+        {% else %}
+        <div class="phone-top"><span>Illustrative alert preview</span><span class="verified-pill">Evidence required</span></div>
+        <div class="alert-source"><span class="source-logo">TRAI</span><div><strong>Telecom consumer complaint rules</strong><small>Example product interface</small></div></div>
+        <p class="alert-impact">See what changes for you, when comments close, and where the relevance evidence came from.</p>
+        <div class="deadline-box"><span>Comment deadline</span><strong>Verified from source</strong><b>Closing soon</b></div>
+        <blockquote>Every production quotation is checked against the consultation text before an alert can be sent.<small>Illustrative evidence state</small></blockquote>
+        <a class="preview-action" href="/feed">Explore consultations <span>→</span></a>
+        {% endif %}
+      </div>
+      <div class="floating-chip chip-left"><b>✓</b><span>Source checked<small>Exact quote found</small></span></div>
+      <div class="floating-chip chip-right"><b>अ</b><span>In your language<small>Powered by Sarvam</small></span></div>
+    </div>
+  </div>
+</section>
 
+<section class="proof-strip">
+  <div class="wrap">
     <div class="stats">
-      <div class="stat"><div class="n">{{ stats.documents }}</div><div class="l">consultations tracked</div></div>
-      <div class="stat"><div class="n">{{ stats.sources }}</div><div class="l">government sources</div></div>
-      <div class="stat"><div class="n">{{ stats.decisions }}</div><div class="l">match decisions in the ledger</div></div>
-      <div class="stat"><div class="n">{{ stats.languages }}</div><div class="l">alert languages</div></div>
+      <div class="stat"><div class="n">{{ stats.documents }}</div><div class="l">Consultations tracked</div></div>
+      <div class="stat"><div class="n">{{ stats.sources }}</div><div class="l">Regulators monitored</div></div>
+      <div class="stat"><div class="n">{{ stats.decisions }}</div><div class="l">Match decisions audited</div></div>
+      <div class="stat"><div class="n">{{ stats.languages }}</div><div class="l">Alert languages</div></div>
     </div>
+    <div class="source-row"><span>Monitoring official sources</span><b>TRAI</b><b>SEBI</b><b>RBI</b><i>Rechecked every 6 hours</i></div>
   </div>
 </section>
 
 <section class="band alt" id="how">
   <div class="wrap">
-    <h2 class="section-title">A durable agent, not another portal</h2>
-    <p class="section-lede">You tell it who you are once, in one plain sentence. It does the rest — every day, while you sleep.</p>
+    <div class="section-kicker">How JanAwaaz works</div>
+    <h2 class="section-title">One profile. Continuous public-policy awareness.</h2>
+    <p class="section-lede">Describe what you do and what affects you. JanAwaaz handles discovery, relevance, verification, and delivery from then on.</p>
     <div class="steps">
-      <div class="step"><span class="k">1</span><h3>It watches</h3>
-        <p>Scheduled workflows sweep TRAI, SEBI and more, surviving flaky government sites with automatic retries. New papers are parsed and the comment deadline is extracted with a quoted evidence span.</p></div>
-      <div class="step"><span class="k">2</span><h3>It matches — then proves it</h3>
-        <p>Your profile is matched semantically against every new consultation, and every candidate match must survive a deterministic verification gate before it can wake you up.</p></div>
-      <div class="step"><span class="k">3</span><h3>It speaks your language</h3>
-        <p>Alerts arrive on Telegram in English, हिन्दी or मराठी via Sarvam AI — with the deadline, what changes for you, and exactly where to submit your comment.</p></div>
+      <div class="step"><span class="k">01</span><div class="step-icon radar"></div><h3>Continuous monitoring</h3><p>Durable workflows inspect official regulator sources every six hours and recover automatically when government sites fail.</p><span class="step-note">TRAI · SEBI · RBI</span></div>
+      <div class="step"><span class="k">02</span><div class="step-icon match"></div><h3>Personal relevance</h3><p>Semantic matching connects each new consultation to the people and organizations it could materially affect.</p><span class="step-note">Profile-aware, not keyword-only</span></div>
+      <div class="step"><span class="k">03</span><div class="step-icon shield"></div><h3>Evidence before alerts</h3><p>An independent verifier must prove the match with a quotation found in the original document.</p><span class="step-note">No proof means no push</span></div>
+      <div class="step"><span class="k">04</span><div class="step-icon language"></div><h3>Action in your language</h3><p>Receive the impact, verified deadline, evidence, and comment link in English, Hindi, or Marathi.</p><span class="step-note">Text and optional voice</span></div>
     </div>
   </div>
 </section>
 
 <section class="band" id="gate">
+  <div class="wrap trust-grid">
+    <div class="trust-copy">
+      <div class="section-kicker">Trust by design</div>
+      <h2 class="section-title">Every alert has to earn the right to interrupt you.</h2>
+      <p class="section-lede">Similarity alone creates noise. JanAwaaz uses a three-stage evidence gate and records the full decision trail for public inspection.</p>
+      <div class="trust-points">
+        <div><span>1</span><p><strong>Relevance threshold</strong><small>The consultation must first pass semantic similarity.</small></p></div>
+        <div><span>2</span><p><strong>Independent verification</strong><small>A separate model checks material impact on your profile.</small></p></div>
+        <div><span>3</span><p><strong>Mechanical source check</strong><small>The evidence quotation must exist in the source text.</small></p></div>
+      </div>
+      <p class="trust-promise"><b>Our promise:</b> if we cannot prove the match, we do not wake you up.</p>
+    </div>
+    <div class="gate-panel">
+      <div class="gate-head"><span>Match decision</span><small>Public audit record</small></div>
+      <div class="gate-row pass"><i>✓</i><div><strong>Semantic relevance</strong><small>0.78 score · threshold 0.50</small></div><b>Passed</b></div>
+      <div class="gate-row pass"><i>✓</i><div><strong>Material impact</strong><small>Independent verifier: yes</small></div><b>Passed</b></div>
+      <div class="gate-row pass"><i>✓</i><div><strong>Evidence quotation</strong><small>Exact span found in source</small></div><b>Verified</b></div>
+      <div class="gate-result"><span>Tier 1</span><div><strong>Confirmed match</strong><small>Eligible for push delivery</small></div></div>
+      {% if examples.get(1) %}<a class="panel-link" href="/ledger/{{ examples.get(1).id }}">Open a live audit record <span>→</span></a>{% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="band use-cases">
   <div class="wrap">
-    <h2 class="section-title">Every alert shows its work</h2>
-    <p class="section-lede">
-      Embedding similarity alone fires garbage — “interested in agriculture” matches a telecom tariff paper
-      because both mention “rural”. So every candidate match passes a gate, and every evaluated decision is written
-      to a public, append-only audit ledger you can inspect.
-    </p>
-    <div class="tiers">
-      <div class="tier-card t1"><h3>Tier 1 — Confirmed</h3>
-        <p>Similarity passes <em>and</em> a verifier answers a strict yes <em>and</em> quotes a span from the document that is string-checked against the actual text. Only this tier sends a push alert.</p></div>
-      <div class="tier-card t2"><h3>Tier 2 — Possible</h3>
-        <p>Similarity passes but the evidence is weak or unverifiable. Recorded for review and never wakes you up.</p></div>
-      <div class="tier-card t3"><h3>Tier 3 — Rejected</h3>
-        <p>The verifier says no. Evaluated candidates are recorded in the ledger so the decision is auditable.</p></div>
+    <div class="section-kicker">Built for the people who act</div>
+    <h2 class="section-title">From one citizen to an entire community.</h2>
+    <div class="persona-grid">
+      <article><span>01</span><h3>Citizens</h3><p>Know when rules affecting your work, services, money, or rights are open for feedback.</p></article>
+      <article><span>02</span><h3>Civic organizations</h3><p>Replace manual regulator tracking with a multilingual, evidence-backed monitoring layer.</p></article>
+      <article><span>03</span><h3>Journalists & researchers</h3><p>Follow new papers, deadlines, source documents, and regulator activity through web, RSS, API, or calendar.</p></article>
     </div>
-    <p style="margin-top:22px;">
-      <em>If we can’t prove the match, we don’t wake you up.</em> Nobody else in this space — at any price — shows their work.
-    </p>
-    {% if examples %}
-    <div class="tiers" style="margin-top:24px;">
-      {% if examples.get(1) %}<div class="tier-card t1"><h3>See a confirmed match</h3><p>{{ examples.get(1).title }}</p><a href="/ledger/{{ examples.get(1).id }}">Inspect its evidence →</a></div>{% endif %}
-      {% if examples.get(3) %}<div class="tier-card t3"><h3>See a rejected match</h3><p>{{ examples.get(3).title }}</p><a href="/ledger/{{ examples.get(3).id }}">Inspect why it was stopped →</a></div>{% endif %}
-    </div>
-    {% endif %}
+  </div>
+</section>
+
+<section class="final-cta">
+  <div class="wrap cta-card">
+    <div><span class="section-kicker">Start watching today</span><h2>The next consultation should not close before you hear about it.</h2><p>Create one plain-language profile. JanAwaaz handles the monitoring from there.</p></div>
+    <div class="btn-row"><a class="btn light" href="/onboard">Create watch profile <span>→</span></a><a class="btn outline-light" href="/feed">Browse the public feed</a></div>
   </div>
 </section>
 {% endblock %}

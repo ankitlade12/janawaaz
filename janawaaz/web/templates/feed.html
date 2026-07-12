@@ -3,9 +3,10 @@
 {% block content %}
 <div class="wrap">
   <div class="page-head">
-    <h1>Consultations</h1>
-    <p>Every paper JanAwaaz is tracking — closing soonest first, with extracted deadlines and where to comment.
-       For organizations: <a href="/feed.rss">RSS</a> · <a href="/deadlines.ics">deadline calendar</a>.</p>
+    <div class="section-kicker">Public monitoring feed</div>
+    <h1>Government consultations, ordered by what you can still act on.</h1>
+    <p>Tracked from official sources, summarized in plain language, and sorted by the nearest comment deadline.</p>
+    <div class="feed-tools"><span class="live-dot"><i></i> Monitoring active</span><a href="/feed.rss">RSS feed</a><a href="/deadlines.ics">Deadline calendar</a><a href="/api/feed">JSON API</a></div>
     <div class="filters">
       <a href="/feed" class="{{ 'active' if not source_filter }}">All sources</a>
       {% for s in sources %}
@@ -38,8 +39,10 @@
         {% else %}
           <span class="chip closed">deadline not stated</span>
         {% endif %}
-        {% if item.comment_channel %}<a href="{{ item.comment_channel }}" rel="noopener">Comment here →</a>{% endif %}
-        {% if item.body_url %}<a href="{{ item.body_url }}" rel="noopener">Read the paper</a>{% endif %}
+        <span class="card-actions">
+          <a class="detail-link" href="/c/{{ item.id }}">View details →</a>
+          {% if item.comment_channel %}<a href="{{ item.comment_channel }}" rel="noopener">Official comment page ↗</a>{% endif %}
+        </span>
       </div>
     </article>
     {% else %}
