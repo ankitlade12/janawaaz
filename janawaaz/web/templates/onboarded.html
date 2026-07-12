@@ -4,22 +4,34 @@
 <div class="wrap">
   <div class="page-head">
     <h1>Done, {{ name }}. The agent is watching.</h1>
-    <p>From now on, every new consultation from every tracked source is matched against your profile.</p>
+    <p>Your profile has been checked against current consultations and will be matched against every new one.</p>
   </div>
   <div class="form-card">
     <p><strong>What happens next</strong></p>
     <p style="color:var(--ink-2);">
       When a consultation genuinely affects you — and only when we can quote the document to prove it —
       you’ll get a Telegram alert in {{ language_label }} with the deadline, what changes for you, and where to comment.
-      Weak matches stay in <a href="/feed">your feed</a>; they never buzz your phone.
+      Weak matches remain in the audit ledger; they never buzz your phone.
     </p>
     {% if not has_telegram %}
-    <div class="notice">
-      You didn’t add a Telegram chat ID, so push alerts are off. Message <strong>@userinfobot</strong> on
-      Telegram to get your ID, then sign up again with it — or just check the feed.
-    </div>
+    <div class="notice">Push alerts are off until you explicitly connect Telegram.</div>
+    <p><a class="btn primary" href="{{ telegram_link }}" rel="noopener">Connect Telegram securely →</a></p>
+    {% else %}
+    <div class="notice">Telegram is connected. Only evidence-confirmed matches can trigger an alert.</div>
     {% endif %}
-    <p><a class="btn primary" href="/feed">Browse consultations now</a></p>
+    <p><a class="btn ghost" href="/feed">Browse consultations now</a></p>
+    <hr style="margin:28px 0;border:0;border-top:1px solid var(--line);">
+    <p class="hint">You control this profile.</p>
+    <div class="btn-row">
+      <form method="post" action="/profile/{{ uid }}/unsubscribe">
+        <input type="hidden" name="token" value="{{ manage_token }}">
+        <button class="btn ghost" type="submit">Unsubscribe alerts</button>
+      </form>
+      <form method="post" action="/profile/{{ uid }}/delete">
+        <input type="hidden" name="token" value="{{ manage_token }}">
+        <button class="btn ghost" type="submit">Delete my profile</button>
+      </form>
+    </div>
   </div>
 </div>
 {% endblock %}

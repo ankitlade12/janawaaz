@@ -33,6 +33,12 @@ services:
         sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        value: JanAwaazBot
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: APP_SECRET
+        generateValue: true
 
 databases:
   - name: janawaaz-db

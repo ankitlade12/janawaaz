@@ -28,6 +28,31 @@ Text of the consultation:
 
 {text}"""
 
+_FAILED_SUMMARY_MARKERS = (
+    "can't summarize",
+    "cannot summarize",
+    "unable to summarize",
+    "could not be summarized",
+    "does not actually contain",
+    "doesn't actually contain",
+    "security check",
+    "captcha",
+)
+
+
+def _clean_summary(value: str) -> str:
+    lowered = value.lower()
+    if any(marker in lowered for marker in _FAILED_SUMMARY_MARKERS):
+        log.warning("discarding model response that describes missing/challenge content")
+        return ""
+    # Models occasionally ignore the one-paragraph instruction. Normalize the
+    # stored result so web cards, translations and Telegram alerts stay clean.
+    value = re.sub(r"\*\*(.+?)\*\*", r"\1", value)
+    value = re.sub(r"^#+\s*", "", value, flags=re.MULTILINE)
+    value = re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", value, flags=re.MULTILINE)
+    value = re.sub(r"\(?word count:\s*\d+\)?", "", value, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", value).strip()
+
 
 def _gemini_client():
     from google import genai
@@ -57,7 +82,7 @@ def summarize_en(text: str, title: str) -> str:
             if resp.stop_reason == "refusal":
                 log.warning("claude declined summary for %r", title[:60])
                 return ""
-            return "".join(b.text for b in resp.content if b.type == "text").strip()
+            return _clean_summary("".join(b.text for b in resp.content if b.type == "text"))
         except Exception as exc:
             if not cfg.gemini_api_key:
                 raise
@@ -65,7 +90,7 @@ def summarize_en(text: str, title: str) -> str:
 
     client = _gemini_client()
     resp = client.models.generate_content(model=cfg.gemini_model, contents=prompt)
-    return (resp.text or "").strip()
+    return _clean_summary(resp.text or "")
 
 
 def embed(text: str) -> list[float]:

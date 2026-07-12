@@ -18,11 +18,11 @@ Embedding similarity is a candidate generator, not a decision-maker. So every ma
 2. An **independent LLM verifier** answers a strict yes/no: *does this consultation materially affect a person matching this profile?*
 3. The verifier must return a **verbatim quote from the document** as evidence — and we **string-check that span against the actual document text**. Paraphrase? Hallucinated quote? The match is demoted. No push.
 
-Only Tier 1 — verified yes, with quotable, checkable evidence — wakes you up. Everything else lands in a feed or stays in the ledger.
+Only Tier 1 — evidence-gated yes, with a quotable, checkable span — wakes you up. Everything else stays in the audit ledger. The quote check proves the words exist in the source; relevance remains a model judgment.
 
 ## The ledger: every decision is auditable
 
-Every gate decision — including every rejection — is an append-only row: similarity score, verdict, evidence span, span-check result, tier, timestamp. Our `/ledger/{id}` page renders it as a decision rail anyone can inspect.
+Every candidate evaluated by the gate — including verifier rejections — becomes an append-only service record: similarity score, verdict, evidence span, span-check result, tier, timestamp. Sub-threshold pairs are not materialized. Our `/ledger/{id}` page renders each evaluated decision as a rail anyone can inspect.
 
 When we ran the real verifier (Claude, with structured outputs so the verdict JSON is guaranteed valid) over our corpus, the farmer-vs-telecom false positive died exactly as designed — and the reasoning is right there in the ledger: *"The consultation concerns V2X vehicular telecom spectrum regulation, unrelated to the farmer's interests in crop insurance, subsidies, rural broadband, or water regulation."*
 
@@ -39,7 +39,7 @@ A wrong deadline is worse than no alert. Extraction is regex-first over sentence
 
 ## Durability is the product
 
-Government websites fail in creative ways (MCA greeted our crawler with a 403 bot-wall; RBI's listing renders client-side). The pipeline is a chain of Render Workflows tasks — `sweep → fetch → parse → summarize/embed → match → gate → notify` — with per-task retry and backoff, so a flaky site is a dashboard entry, not an outage. Sources are one-file adapters behind a normalized record contract; TRAI and SEBI are live today.
+Government websites fail in creative ways (MCA greeted our crawler with a 403 bot-wall; RBI sometimes returns an anti-bot challenge instead of a paper). The pipeline is a chain of Render Workflows tasks — `sweep → fetch → parse → summarize/embed → match → gate → notify` — with per-task retry and backoff, so a flaky site is a dashboard entry, not an outage. Challenge pages are quarantined before summarization. Sources are one-file adapters behind a normalized record contract; TRAI, SEBI and RBI are live today.
 
 The vernacular layer is Sarvam AI: every alert is machine-translated at send time (and optionally spoken, via TTS, for users who can't comfortably read it). Today, translating consultations is done by hand, for a handful of drafts, days after publication. The agent does all of them, in hours.
 

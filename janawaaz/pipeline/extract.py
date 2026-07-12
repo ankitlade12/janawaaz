@@ -45,6 +45,21 @@ _BOUND = re.compile(
 )
 _COUNTER = re.compile(r"counter[\s-]?comments?", re.IGNORECASE)
 
+_CHALLENGE_MARKERS = (
+    "enable javascript to view the page content",
+    "enter the code shown in the image",
+    "security check",
+    "captcha",
+    "support id",
+)
+
+
+def is_challenge_text(text: str) -> bool:
+    """Detect anti-bot interstitials before they become summaries or embeddings."""
+    lowered = re.sub(r"\s+", " ", text).lower()
+    hits = sum(marker in lowered for marker in _CHALLENGE_MARKERS)
+    return hits >= 2 or "captcha" in lowered
+
 
 @dataclass
 class DeadlineResult:

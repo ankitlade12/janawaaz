@@ -4,7 +4,7 @@
 <div class="wrap">
   <div class="page-head">
     <h1>Match ledger #{{ row.id }}</h1>
-    <p>The full, immutable record of why this consultation {{ "was pushed to" if row.tier == 1 else "was not pushed to" }} this citizen.</p>
+    <p>The append-only audit record of why this consultation {{ "was pushed to" if row.tier == 1 else "was not pushed to" }} this citizen.</p>
   </div>
 
   <div class="ledger-doc">
@@ -28,7 +28,7 @@
 
   <div class="verdict-line">
     {% if row.tier == 1 %}<span class="badge t1">Tier 1 — Confirmed → alert sent</span>
-    {% elif row.tier == 2 %}<span class="badge t2">Tier 2 — Possible → feed only, no push</span>
+    {% elif row.tier == 2 %}<span class="badge t2">Tier 2 — Possible → audit review only, no push</span>
     {% else %}<span class="badge t3">Tier 3 — Rejected → ledger only</span>{% endif %}
     <span style="color:var(--ink-3); font-size:0.9rem;">decided {{ row.created_at.strftime("%d %b %Y %H:%M UTC") }}</span>
   </div>
@@ -70,7 +70,7 @@
 
   <p style="color:var(--ink-3); font-size:0.88rem; padding-bottom:40px;">
     Raw record: <a href="/api/ledger/{{ row.id }}">/api/ledger/{{ row.id }}</a> ·
-    Ledger rows are append-only; decisions are never edited or deleted.
+    Ledger rows are append-only by the service; profiles can be deleted without erasing the anonymous decision trail.
   </p>
 </div>
 {% endblock %}

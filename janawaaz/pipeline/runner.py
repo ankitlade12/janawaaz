@@ -9,7 +9,7 @@ laptop: sweep -> fetch -> parse -> summarize/embed -> match -> gate -> notify.
 import argparse
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import httpx
 from sqlalchemy import select
@@ -42,13 +42,38 @@ def ingest_record(s, src: Source, rec: ConsultationRecord) -> Document | None:
     (source_id, external_id) loses only this record, not the whole batch —
     the unique constraint is the arbiter, not the racy pre-check.
     """
-    exists = s.execute(
-        select(Document.id).where(
+    existing = s.execute(
+        select(Document).where(
             Document.source_id == src.id, Document.external_id == rec.external_id
         )
     ).scalar_one_or_none()
-    if exists:
-        return None
+    if existing:
+        # Listing metadata can change when agencies extend a deadline or replace
+        # a PDF. Recheck currently actionable/unknown records; parse_document
+        # will cheaply stop the downstream chain when content is unchanged.
+        changed = False
+        for field in ("title", "body_url", "comment_channel", "published_at", "ministry"):
+            value = getattr(rec, field)
+            if value and value != getattr(existing, field):
+                setattr(existing, field, value)
+                changed = True
+        if rec.deadline and rec.deadline != existing.deadline:
+            existing.deadline = rec.deadline
+            changed = True
+        if rec.status == "closed" and existing.status != "closed":
+            existing.status = "closed"
+            changed = True
+        elif rec.status == "open" and (
+            existing.deadline is None or existing.deadline >= date.today()
+        ):
+            existing.status = "open"
+        actionable = (
+            existing.deadline is None
+            or existing.deadline >= date.today()
+            or existing.status == "open"
+            or rec.status == "open"
+        )
+        return existing if changed or actionable or existing.embedding is None else None
     doc = Document(
         source_id=src.id,
         external_id=rec.external_id,
@@ -70,12 +95,13 @@ def ingest_record(s, src: Source, rec: ConsultationRecord) -> Document | None:
     return doc
 
 
-def parse_document(s, doc: Document) -> None:
+def parse_document(s, doc: Document) -> bool:
     """Download the body (PDF or HTML page), extract text + deadline with evidence span."""
     cfg = settings()
     if not doc.body_url or not doc.body_url.startswith("http"):
         log.info("doc %s: no fetchable body (%s); skipping text extraction", doc.id, doc.body_url)
-        return
+        return False
+    previous = (doc.content_hash, doc.deadline, doc.deadline_verified, doc.status)
     resp = httpx.get(
         doc.body_url,
         headers={"User-Agent": cfg.user_agent},
@@ -85,13 +111,23 @@ def parse_document(s, doc: Document) -> None:
     resp.raise_for_status()
     content_type = resp.headers.get("content-type", "")
     if doc.body_url.lower().split("?")[0].endswith(".pdf") or "pdf" in content_type:
-        doc.body_text = extract.pdf_text(resp.content)
+        # A nominal .PDF URL sometimes returns an HTML anti-bot page with 200.
+        if resp.content[:20].lstrip().lower().startswith(b"<"):
+            challenge = extract.html_text(resp.text)
+            if extract.is_challenge_text(challenge):
+                raise ValueError("source returned an anti-bot challenge instead of the PDF")
+        body_text = extract.pdf_text(resp.content)
     else:
-        doc.body_text = extract.html_text(resp.text)
+        body_text = extract.html_text(resp.text)
+    if extract.is_challenge_text(body_text or ""):
+        raise ValueError("source returned an anti-bot challenge instead of consultation text")
+    if len((body_text or "").strip()) < 200:
+        raise ValueError("consultation body is too short to process safely")
+    doc.body_text = body_text
     doc.content_hash = hashlib.sha256(resp.content).hexdigest()
 
     found = extract.extract_deadline(doc.body_text, published_after=doc.published_at)
-    if not found.deadline and doc.comment_channel and doc.comment_channel != doc.body_url:
+    if doc.comment_channel and doc.comment_channel != doc.body_url:
         # Some regulators (RBI's Connect 2 Regulate) state the deadline on the
         # comment page, not inside the document. Same extractor, same evidence rules.
         try:
@@ -102,19 +138,29 @@ def parse_document(s, doc: Document) -> None:
                 follow_redirects=True,
             )
             channel.raise_for_status()
-            found = extract.extract_deadline(
+            channel_found = extract.extract_deadline(
                 extract.html_text(channel.text), published_after=doc.published_at
             )
+            # Detail/comment pages are where agencies announce extensions. Prefer
+            # a later verified comment-page date over the paper's original date.
+            if channel_found.deadline and (
+                not found.deadline or channel_found.deadline > found.deadline
+            ):
+                found = channel_found
         except httpx.HTTPError as exc:
             log.info("doc %s: comment-channel fetch failed (%s)", doc.id, exc)
     if found.deadline:
         doc.deadline = found.deadline
         doc.deadline_span = found.span
         doc.deadline_verified = found.verified
+    if doc.deadline:
+        doc.status = "closed" if doc.deadline < date.today() else "open"
     log.info(
         "doc %s: %s chars, deadline=%s (%s, verified=%s)",
         doc.id, len(doc.body_text or ""), doc.deadline, found.method, found.verified,
     )
+    current = (doc.content_hash, doc.deadline, doc.deadline_verified, doc.status)
+    return current != previous or doc.embedding is None
 
 
 def summarize_and_embed(s, doc: Document) -> None:
@@ -133,7 +179,11 @@ def match_and_notify(s, doc: Document, skip_notify: bool = False) -> None:
     Sub-threshold pairs are skipped without a ledger row — the ledger records
     decisions about candidates, not the cross product of all users and papers.
     """
-    if doc.embedding is None:
+    if (
+        doc.embedding is None
+        or doc.status == "closed"
+        or (doc.deadline is not None and doc.deadline < date.today())
+    ):
         return
     cfg = settings()
     candidates = [
@@ -146,6 +196,26 @@ def match_and_notify(s, doc: Document, skip_notify: bool = False) -> None:
         ledger = matching.gate_match(s, doc, user, sim)
         if ledger.tier == 1 and not skip_notify:
             notify.send_alert(s, doc, user, ledger)
+
+
+def match_existing_for_user(s, user, skip_notify: bool = False) -> list:
+    """Evaluate a new profile against consultations it can still act on."""
+    cfg = settings()
+    today = date.today()
+    candidates = [
+        (doc, sim)
+        for doc, sim in matching.candidates_for_user(s, user)
+        if sim >= cfg.similarity_threshold
+        and (doc.deadline is None or doc.deadline >= today)
+        and doc.status != "closed"
+    ][: cfg.max_gate_candidates]
+    rows = []
+    for doc, sim in candidates:
+        ledger = matching.gate_match(s, doc, user, sim)
+        rows.append(ledger)
+        if ledger.tier == 1 and not skip_notify and user.telegram_chat_id:
+            notify.send_alert(s, doc, user, ledger)
+    return rows
 
 
 def sweep(limit: int | None = None, skip_notify: bool = False) -> dict:
@@ -166,9 +236,10 @@ def sweep(limit: int | None = None, skip_notify: bool = False) -> dict:
             log.info("%s: %s records, %s new", adapter_name, len(records), len(new_docs))
             for doc in new_docs:
                 try:
-                    parse_document(s, doc)
-                    summarize_and_embed(s, doc)
-                    match_and_notify(s, doc, skip_notify=skip_notify)
+                    changed = parse_document(s, doc)
+                    if changed:
+                        summarize_and_embed(s, doc)
+                        match_and_notify(s, doc, skip_notify=skip_notify)
                     stats["new_documents"] += 1
                 except Exception:
                     log.exception("doc %s (%s) failed; continuing", doc.id, doc.title[:60])

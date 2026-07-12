@@ -39,10 +39,10 @@ Embedding similarity alone fires garbage: *"interested in agriculture"* matches 
 | Tier | Requirement | Consequence |
 |---|---|---|
 | **1 — Confirmed** | similarity ≥ threshold **AND** an LLM verifier answers a strict yes **AND** returns a verbatim span from the document, **string-checked against the actual text** | push alert |
-| **2 — Possible** | similarity passes, but the evidence is weak or the span fails the string check | feed only, never pushes |
-| **3 — Rejected** | below threshold, or verifier says no | ledger only |
+| **2 — Possible** | similarity passes, but the evidence is weak or the span fails the string check | audit review only, never pushes |
+| **3 — Rejected** | verifier says no | ledger only |
 
-Every decision — including every rejection — is an append-only row in the **match ledger**: similarity score, verdict, evidence span, span-check result, tier, timestamp. Rendered at `/ledger/{id}` so anyone can audit why an alert fired (or didn't). *If we can't prove the match, we don't wake you up.*
+Every candidate evaluated by the gate — including verifier rejections — becomes an append-only service record in the **match ledger**: similarity score, verdict, evidence span, span-check result, tier, timestamp. Rendered at `/ledger/{id}` so anyone can audit why an alert fired (or didn't). Sub-threshold pairs are intentionally not materialized. *If we can't prove the match, we don't wake you up.*
 
 ## Architecture
 
@@ -81,7 +81,7 @@ flowchart LR
     DATA --> WEB
 ```
 
-**Sources today:** TRAI (Drupal listing, open + archive) and SEBI (sitemap-based discovery — the feed that can't restructure under us). The adapter contract is one normalized record; **adding a source is one file** plus one registry line. Go/no-go log lives in `janawaaz/adapters/__init__.py` (MCA: 403 bot-wall; RBI: JS-rendered listing — both documented, not hidden).
+**Sources today:** TRAI (Drupal listing), SEBI (sitemap discovery), and RBI (server-rendered Draft Directions plus RSS fallback). RBI anti-bot interstitials are rejected before summarization; a blocked document remains unprocessed instead of becoming a misleading summary. The adapter contract is one normalized record; **adding a source is one file** plus one registry line. MCA remains excluded because of its 403 bot wall.
 
 ## Run it locally
 
@@ -124,7 +124,9 @@ Tests: `uv run pytest` — unit suites run anywhere; gate-flow tests use the dat
 
 - Deadline extraction is regex-first with span verification; unusual phrasings fall back to "deadline unverified — check source" rather than a guess.
 - Open/closed status for SEBI papers is inferred from the extracted deadline (SEBI doesn't expose it).
-- Two sources today; MCA is bot-walled and RBI's listing is JS-rendered — both are adapter candidates via other entry points.
+- Three sources today. Some RBI PDFs intermittently return anti-bot challenges; these records are quarantined rather than summarized. MCA remains bot-walled.
+- Evidence-span checking proves that a quotation exists in the source; relevance is still a model judgment, so the product calls these evidence-gated matches rather than infallible decisions.
+- The ledger is append-only by service behavior, not a cryptographic or regulator-grade immutable log.
 - Matching quality depends on real embeddings; the keyless `dev` embedder exists for development only.
 
 ## Roadmap

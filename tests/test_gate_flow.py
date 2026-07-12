@@ -2,7 +2,7 @@
 
 Covers the three verdicts that define the product:
   - verified span        -> Tier 1 (push)
-  - unverifiable span    -> Tier 2 (feed only) — the false-positive killer
+  - unverifiable span    -> Tier 2 (audit review only) — the false-positive killer
   - verifier says no     -> Tier 3 (ledger only)
 and alert composition (deadline honesty + cited span).
 """
@@ -108,3 +108,18 @@ def test_alert_text_carries_span_and_deadline_honesty(db_session, doc_and_user, 
     doc.deadline_verified = False
     text2 = notify.build_alert_text(doc, row)
     assert "unverified" in text2
+
+
+def test_gate_and_alert_are_idempotent(db_session, doc_and_user, monkeypatch):
+    doc, user = doc_and_user
+    monkeypatch.setattr(
+        matching, "verify_match",
+        lambda *a, **k: Verdict("yes", "ok", "rural broadband subscribers", True),
+    )
+    first = matching.gate_match(db_session, doc, user, similarity=0.55)
+    second = matching.gate_match(db_session, doc, user, similarity=0.55)
+    assert first.id == second.id
+
+    alert_one = notify.send_alert(db_session, doc, user, first)
+    alert_two = notify.send_alert(db_session, doc, user, second)
+    assert alert_one.id == alert_two.id

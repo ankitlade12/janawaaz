@@ -6,13 +6,15 @@ Tier logic:
                        text. Only Tier 1 triggers a push alert.
   Tier 2 (Possible)  - similarity passes but verification is weak (verifier
                        unavailable, indirect answer, or span fails the string check).
-                       Feed only, no push.
-  Tier 3 (Rejected)  - below threshold, or verifier says no.
+                       Audit review only, no push.
+  Tier 3 (Rejected)  - verifier says no.
 
-Every decision — including rejections — is written to the immutable match_ledger.
+Every candidate evaluated by the gate — including verifier rejections — is
+written to the append-only match_ledger. Sub-threshold pairs are not materialized.
 """
 
 import json
+import hashlib
 import logging
 import re
 from dataclasses import dataclass
@@ -52,9 +54,30 @@ def candidates_for_document(session, doc: Document) -> list[tuple[User, float]]:
     """All users with similarity to this document, best first (pgvector cosine)."""
     sim = (1 - User.embedding.cosine_distance(doc.embedding)).label("sim")
     rows = session.execute(
-        select(User, sim).where(User.embedding.is_not(None)).order_by(sim.desc())
+        select(User, sim).where(User.embedding.is_not(None), User.active.is_(True)).order_by(sim.desc())
     ).all()
     return [(u, float(s)) for u, s in rows]
+
+
+def candidates_for_user(session, user: User) -> list[tuple[Document, float]]:
+    """Existing documents ranked for a newly-created profile."""
+    sim = (1 - Document.embedding.cosine_distance(user.embedding)).label("sim")
+    rows = session.execute(
+        select(Document, sim)
+        .where(Document.embedding.is_not(None))
+        .order_by(sim.desc())
+    ).all()
+    return [(doc, float(score)) for doc, score in rows]
+
+
+def document_fingerprint(doc: Document) -> str:
+    """Stable identity for one processed version of a consultation."""
+    if doc.content_hash:
+        return doc.content_hash
+    raw = "\n".join(
+        [doc.title or "", doc.body_url or "", str(doc.deadline or ""), doc.body_text or ""]
+    )
+    return hashlib.sha256(raw.encode()).hexdigest()
 
 
 def _normalize(s: str) -> str:
@@ -153,6 +176,16 @@ def verify_match(profile: str, doc_title: str, doc_summary: str, doc_text: str) 
 def gate_match(session, doc: Document, user: User, similarity: float) -> MatchLedger:
     """Apply the gate to one (document, user) candidate and write the ledger row."""
     cfg = settings()
+    fingerprint = document_fingerprint(doc)
+    existing = session.execute(
+        select(MatchLedger).where(
+            MatchLedger.document_id == doc.id,
+            MatchLedger.user_id == user.id,
+            MatchLedger.document_fingerprint == fingerprint,
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing
 
     if similarity < cfg.similarity_threshold:
         tier, verdict = 3, Verdict("skipped", "below similarity threshold", None, False)
@@ -177,6 +210,7 @@ def gate_match(session, doc: Document, user: User, similarity: float) -> MatchLe
         evidence_span=verdict.span,
         span_verified=verdict.span_verified,
         tier=tier,
+        document_fingerprint=fingerprint,
     )
     session.add(row)
     session.flush()

@@ -30,6 +30,9 @@ class Settings(BaseSettings):
 
     sarvam_api_key: str = ""
     telegram_bot_token: str = ""
+    telegram_bot_username: str = "JanAwaazBot"
+    # Set the same value in Telegram's setWebhook secret_token parameter.
+    telegram_webhook_secret: str = ""
     render_api_key: str = ""
 
     # Voice alerts: Sarvam Bulbul TTS sent as Telegram audio, for low-literacy
@@ -45,6 +48,10 @@ class Settings(BaseSettings):
     # Tier 1 requires the LLM verifier to confirm AND return a span found verbatim
     # in the document text; similarity alone can never push past Tier 2.
     alert_languages: str = "hi,mr"
+
+    # Used for signed profile-management and Telegram-link tokens. In production
+    # set a random value; the bot token is a safe fallback for demo deployments.
+    app_secret: str = ""
 
     http_timeout_seconds: float = 30.0
     user_agent: str = (

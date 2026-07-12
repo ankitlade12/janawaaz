@@ -61,9 +61,10 @@ async def fetch_source(adapter_name: str) -> dict:
 async def parse_document(doc_id: int) -> dict:
     with session() as s:
         doc = s.get(Document, doc_id)
-        runner.parse_document(s, doc)
-    await summarize_and_embed(doc_id)
-    return {"doc_id": doc_id}
+        changed = runner.parse_document(s, doc)
+    if changed:
+        await summarize_and_embed(doc_id)
+    return {"doc_id": doc_id, "changed": changed}
 
 
 @app.task

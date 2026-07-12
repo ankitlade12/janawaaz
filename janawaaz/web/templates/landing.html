@@ -45,20 +45,26 @@
     <h2 class="section-title">Every alert shows its work</h2>
     <p class="section-lede">
       Embedding similarity alone fires garbage — “interested in agriculture” matches a telecom tariff paper
-      because both mention “rural”. So every match passes a gate, and every decision is written to a public,
-      immutable ledger you can inspect.
+      because both mention “rural”. So every candidate match passes a gate, and every evaluated decision is written
+      to a public, append-only audit ledger you can inspect.
     </p>
     <div class="tiers">
       <div class="tier-card t1"><h3>Tier 1 — Confirmed</h3>
         <p>Similarity passes <em>and</em> a verifier answers a strict yes <em>and</em> quotes a span from the document that is string-checked against the actual text. Only this tier sends a push alert.</p></div>
       <div class="tier-card t2"><h3>Tier 2 — Possible</h3>
-        <p>Similarity passes but the evidence is weak or unverifiable. Shown in your feed; never wakes you up.</p></div>
+        <p>Similarity passes but the evidence is weak or unverifiable. Recorded for review and never wakes you up.</p></div>
       <div class="tier-card t3"><h3>Tier 3 — Rejected</h3>
-        <p>Below threshold, or the verifier says no. Recorded in the ledger so the decision is auditable — nothing is silently dropped.</p></div>
+        <p>The verifier says no. Evaluated candidates are recorded in the ledger so the decision is auditable.</p></div>
     </div>
     <p style="margin-top:22px;">
       <em>If we can’t prove the match, we don’t wake you up.</em> Nobody else in this space — at any price — shows their work.
     </p>
+    {% if examples %}
+    <div class="tiers" style="margin-top:24px;">
+      {% if examples.get(1) %}<div class="tier-card t1"><h3>See a confirmed match</h3><p>{{ examples.get(1).title }}</p><a href="/ledger/{{ examples.get(1).id }}">Inspect its evidence →</a></div>{% endif %}
+      {% if examples.get(3) %}<div class="tier-card t3"><h3>See a rejected match</h3><p>{{ examples.get(3).title }}</p><a href="/ledger/{{ examples.get(3).id }}">Inspect why it was stopped →</a></div>{% endif %}
+    </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

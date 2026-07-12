@@ -50,3 +50,29 @@ def init_db() -> None:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         conn.commit()
     models.Base.metadata.create_all(engine())
+    # create_all does not alter an existing hackathon database. Keep these
+    # additive migrations here so the deployed demo upgrades without Alembic.
+    with engine().begin() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE"))
+        conn.execute(text(
+            "ALTER TABLE match_ledger ADD COLUMN IF NOT EXISTS "
+            "document_fingerprint VARCHAR(64) DEFAULT 'unversioned'"
+        ))
+        conn.execute(text("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_match_live_fingerprint
+            ON match_ledger (document_id, user_id, document_fingerprint)
+            WHERE document_fingerprint <> 'unversioned'
+        """))
+        # Repair data already ingested from government anti-bot challenge pages.
+        conn.execute(text("""
+            UPDATE documents
+               SET summary_en = NULL, body_text = NULL, embedding = NULL
+             WHERE lower(coalesce(summary_en, '')) LIKE '%captcha%'
+                OR lower(coalesce(summary_en, '')) LIKE '%security check%'
+                OR lower(coalesce(summary_en, '')) LIKE '%enable javascript%'
+        """))
+        conn.execute(text("""
+            UPDATE documents
+               SET status = 'closed'
+             WHERE deadline IS NOT NULL AND deadline < CURRENT_DATE
+        """))

@@ -26,6 +26,9 @@ Set the `sync: false` env vars when prompted:
 - `GEMINI_API_KEY` — embeddings (required for real matching; Claude has no embeddings API)
 - `SARVAM_API_KEY` — alert translation / TTS
 - `TELEGRAM_BOT_TOKEN` — push delivery
+- `TELEGRAM_BOT_USERNAME` — bot username without `@`
+- `TELEGRAM_WEBHOOK_SECRET` — random value also passed to Telegram as `secret_token`
+- `APP_SECRET` — random signing secret for consent and profile-management links
 - `RENDER_API_KEY` (on the cron service) — lets the trigger script start the workflow task
 
 ## 2. Workflow service (manual, one time)
@@ -40,6 +43,14 @@ Dashboard → **New → Workflow** (early access):
 
 Local validation of the same chain: `render workflows dev -- python main.py`
 (Render CLI), or run the synchronous twin `python -m janawaaz.pipeline.runner`.
+
+Connect the Telegram webhook after the web deploy:
+
+```bash
+curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -d "url=https://janawaaz-web.onrender.com/api/telegram/webhook" \
+  -d "secret_token=$TELEGRAM_WEBHOOK_SECRET"
+```
 
 ## 3. Seed the demo corpus (once, from your machine)
 

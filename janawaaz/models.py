@@ -67,13 +67,20 @@ class User(Base):
     interests_text: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
     telegram_chat_id: Mapped[str | None] = mapped_column(String(80))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class MatchLedger(Base):
-    """Immutable record of every match decision — the provenance trail behind every alert."""
+    """Append-only service record for each gate evaluation behind an alert."""
 
     __tablename__ = "match_ledger"
+    __table_args__ = (
+        UniqueConstraint(
+            "document_id", "user_id", "document_fingerprint",
+            name="uq_match_document_user_fingerprint",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     document_id: Mapped[int] = mapped_column(ForeignKey("documents.id"))
@@ -84,11 +91,15 @@ class MatchLedger(Base):
     evidence_span: Mapped[str | None] = mapped_column(Text)
     span_verified: Mapped[bool | None] = mapped_column(Boolean)
     tier: Mapped[int] = mapped_column(SmallInteger)  # 1 confirmed | 2 possible | 3 rejected
+    # A content-derived idempotency key. A revised paper can be evaluated again,
+    # while retries of the same paper/user decision reuse the existing row.
+    document_fingerprint: Mapped[str] = mapped_column(String(64), default="unversioned")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Alert(Base):
     __tablename__ = "alerts"
+    __table_args__ = (UniqueConstraint("ledger_id", "channel", name="uq_alert_ledger_channel"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     ledger_id: Mapped[int] = mapped_column(ForeignKey("match_ledger.id"))

@@ -23,7 +23,7 @@ HACKHAZARDS '26 · Render Workflows · Sarvam AI · Public Systems & Civic Tech
 ## 4. The gate — every alert shows its work (demo: /ledger)
 **If we can't prove the match, we don't wake you up.**
 - Tier 1 = similarity + independent verifier "yes" + verbatim span string-checked against the document
-- Weak evidence → feed only; rejected → ledger only; every decision immutable and auditable
+- Weak evidence → audit review only; verifier rejection → ledger; every evaluated candidate is auditable
 - Live example: farmer profile vs telecom paper — similarity passed, verifier killed it, span check visible
 
 ## 5. Deadline honesty
@@ -52,9 +52,9 @@ HACKHAZARDS '26 · Render Workflows · Sarvam AI · Public Systems & Civic Tech
 - The unclaimed intersection: automated + personalized + verified + vernacular + push + free
 
 ## 9. Honest limitations & roadmap
-**Two sources today; three well-documented no-gos.**
-- MCA bot-walled, RBI listing JS-rendered — adapter candidates via other entry points
-- Roadmap: RBI/MeitY/state governments, WhatsApp channel, comment-drafting help
+**Three sources today; anti-bot failures are quarantined, not disguised.**
+- TRAI + SEBI + RBI live; MCA remains bot-walled
+- Roadmap: MeitY/state governments, WhatsApp channel, comment-drafting help
 - Civis-style partners could run on top of the ledger as an API
 
 ## 10. Close

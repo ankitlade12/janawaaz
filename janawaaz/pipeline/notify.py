@@ -8,6 +8,7 @@ import logging
 from datetime import date, datetime, timezone
 
 import httpx
+from sqlalchemy import select
 
 from janawaaz.config import settings
 from janawaaz.models import Alert, Document, MatchLedger, User
@@ -125,6 +126,11 @@ def telegram_send(chat_id: str, text: str) -> bool:
 
 def send_alert(session, doc: Document, user: User, ledger: MatchLedger) -> Alert:
     """Compose, translate, deliver (Tier 1 only — enforced by the caller)."""
+    existing = session.execute(
+        select(Alert).where(Alert.ledger_id == ledger.id, Alert.channel == "telegram")
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing
     text_en = build_alert_text(doc, ledger)
     lang = user.language or "en"
     payload = translate(text_en, lang)
