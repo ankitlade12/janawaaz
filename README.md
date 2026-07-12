@@ -1,138 +1,370 @@
-# JanAwaaz (जन आवाज़ — "people's voice")
+# JanAwaaz — Verified Public-Consultation Alerts
 
-> **The agent that tells you when your government is asking for your opinion — with proof, in your own language, before the window closes.**
-
-**Live:** [janawaaz-web.onrender.com](https://janawaaz-web.onrender.com)
-
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-web-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Render](https://img.shields.io/badge/Render-Workflows-46E3B7.svg?logo=render&logoColor=black)](https://render.com/)
 [![CI](https://github.com/ankitlade12/janawaaz/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitlade12/janawaaz/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
+[![Tests](https://img.shields.io/badge/tests-33%20passing-brightgreen.svg)](#reproducible-testing)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**HACKHAZARDS '26** · Tracks: **Render Workflows** · **Sarvam AI** · Theme: Public Systems, Governance & Civic Tech
+> **Your government is asking for your opinion. JanAwaaz tells you—with evidence, in your language, before the window closes.**
 
----
+JanAwaaz (जन आवाज़, “people’s voice”) is a durable monitoring agent for Indian public consultations. It watches regulator websites, extracts new consultation papers and their deadlines, matches them to a citizen or organization’s interests, and sends only evidence-gated alerts.
 
-## The problem
+Every confirmed alert includes the consultation, deadline, comment channel, plain-language impact, and a quotation from the source showing why the match is relevant. Hindi and Marathi alerts are translated with Sarvam AI, with optional voice delivery through Telegram.
 
-India's Pre-Legislative Consultation Policy (2014) requires ministries to publish draft laws for 30 days of public comment. Regulators — TRAI, SEBI, RBI — run continuous consultation streams on rules that change crop insurance, telecom tariffs, and how your data is used. In practice the comment boxes fill with industry lobbyists, because **ordinary citizens never learn a consultation exists until it has closed**.
+**HACKHAZARDS ’26** · Render Workflows · Sarvam AI · Public Systems, Governance & Civic Tech
 
-In 2015, TRAI's net-neutrality consultation was a 118-page paper with an obscure title ("Regulatory Framework for OTT Services") — the official comments table lists just 27 institutional submissions. It took a viral comedy video and a volunteer team hand-condensing the paper into plain language to wake the country up; a million emails followed. Most consultations never get a viral video. **Discovery and translation are the broken steps, not access — JanAwaaz automates exactly what those volunteers did by hand.**
+## Quick Highlights
 
-## What JanAwaaz does
+- **Push, Not Pull** — watches consultation sources continuously instead of requiring users to revisit another portal
+- **Evidence-Gated Matching** — semantic similarity proposes candidates; an independent verifier must return a source-backed quotation before an alert can push
+- **Deadline Honesty** — extracted dates carry verbatim evidence spans; uncertain deadlines are labeled instead of invented
+- **Vernacular Delivery** — English, हिन्दी, and मराठी alerts through Sarvam AI, with optional Bulbul voice output
+- **Durable Monitoring** — Render Workflows retries flaky government websites and preserves progress between tasks
+- **Auditable Decisions** — every evaluated candidate records its score, verdict, evidence, verification result, and tier
+- **Consent-First Telegram** — signed one-tap linking, `/stop`, unsubscribe, and profile deletion; users never paste raw chat IDs
+- **Organization-Friendly Feeds** — public web feed, RSS, deadline calendar, JSON API, and shareable consultation pages
+- **Extensible Sources** — TRAI, SEBI, and RBI use a shared adapter contract; another source is one module and one registry entry
 
-You describe yourself once, in one plain sentence — *"I run a small textile export business in Surat"*. From then on, a durable agent:
+## Live Deployment
 
-1. **Watches** every tracked source on a schedule, surviving flaky government sites with automatic retries.
-2. **Parses** each new paper: full text, plus the comment deadline extracted with a **verbatim evidence span**, string-checked against the document. A wrong deadline is worse than no alert — unverifiable deadlines are labelled as such, never invented.
-3. **Matches** the paper against every citizen profile semantically (pgvector cosine over 768-dim embeddings).
-4. **Gates** every candidate match — the part nobody else does (below).
-5. **Alerts** you on Telegram in English, हिन्दी or मराठी via Sarvam AI — with the deadline, what changes for you, where to comment, and the quoted evidence for *why you* got the alert. Optional voice alerts (Sarvam Bulbul TTS) for users who can't comfortably read them.
-
-## Who this is for, honestly
-
-Not "every farmer will install a Telegram bot" — civic-tech adoption research (Mobile Vaani, 100K rural users at peak) shows software alone doesn't reach low-literacy users; offline intermediaries do. JanAwaaz's realistic first users are **the intermediary layer that already does this work by hand**: organizations like Civis (fellows + Trello), journalists, bar and MSME associations, unions, student groups, researchers — plus individually motivated citizens. The 2015 net-neutrality win is the existence proof: when volunteers translated and alerted, a million people acted. The bottleneck was never citizens' willingness — it was that the intermediary layer doesn't scale by hand. JanAwaaz is infrastructure for that layer, free.
-
-## The gate — every alert shows its work
-
-Embedding similarity alone fires garbage: *"interested in agriculture"* matches a telecom tariff paper because both mention "rural". So no alert is sent on similarity alone:
-
-| Tier | Requirement | Consequence |
+| Surface | URL | Purpose |
 |---|---|---|
-| **1 — Confirmed** | similarity ≥ threshold **AND** an LLM verifier answers a strict yes **AND** returns a verbatim span from the document, **string-checked against the actual text** | push alert |
-| **2 — Possible** | similarity passes, but the evidence is weak or the span fails the string check | audit review only, never pushes |
-| **3 — Rejected** | verifier says no | ledger only |
+| **Web application** | [janawaaz-web.onrender.com](https://janawaaz-web.onrender.com) | Landing page and onboarding |
+| **Consultation feed** | [janawaaz-web.onrender.com/feed](https://janawaaz-web.onrender.com/feed) | Actionable consultations, closing soonest first |
+| **RSS feed** | [janawaaz-web.onrender.com/feed.rss](https://janawaaz-web.onrender.com/feed.rss) | Reader and CMS integration |
+| **Deadline calendar** | [janawaaz-web.onrender.com/deadlines.ics](https://janawaaz-web.onrender.com/deadlines.ics) | Subscribable calendar |
+| **Health check** | [janawaaz-web.onrender.com/healthz](https://janawaaz-web.onrender.com/healthz) | Deployment status |
+| **JSON API** | [janawaaz-web.onrender.com/api/feed](https://janawaaz-web.onrender.com/api/feed) | Machine-readable consultation feed |
 
-Every candidate evaluated by the gate — including verifier rejections — becomes an append-only service record in the **match ledger**: similarity score, verdict, evidence span, span-check result, tier, timestamp. Rendered at `/ledger/{id}` so anyone can audit why an alert fired (or didn't). Sub-threshold pairs are intentionally not materialized. *If we can't prove the match, we don't wake you up.*
+The public web service and PostgreSQL database run on Render. A separately configured Render Workflow service executes the durable ingestion chain; GitHub Actions triggers its root task every six hours.
 
-## Architecture
+## Architecture Overview
+
+### High-Level Workflow
 
 ```mermaid
 flowchart LR
-    CRON["Render Cron<br/>(every 6h)"] -->|Render API| ROOT
-
-    subgraph WF["Render Workflows — durable task chain"]
-        ROOT["sweep_sources"] --> F["fetch_source(adapter)<br/>retry x5, backoff"]
-        F --> P["parse_document<br/>PDF text + deadline span"]
-        P --> S["summarize_and_embed<br/>Gemini + text-embedding-004"]
-        S --> M["match_users<br/>pgvector cosine"]
-        M --> G["gate_match<br/>verifier + span check"]
-        G --> N["translate_and_notify<br/>Sarvam → Telegram"]
-    end
-
-    subgraph DATA["Render Postgres + pgvector"]
-        DOCS[(documents)]
-        USERS[(users)]
-        LEDGER[(match_ledger)]
-        ALERTS[(alerts)]
-    end
-
-    subgraph WEB["FastAPI on Render"]
-        LAND["/ landing"]
-        FEED["/feed"]
-        LEDG["/ledger/{id} provenance"]
-        ONB["/onboard"]
-        API["/api/*"]
-    end
-
-    P --> DOCS
-    G --> LEDGER
-    N --> ALERTS
-    ONB --> USERS
-    DATA --> WEB
+    SRC[TRAI, SEBI, RBI] --> FETCH[Fetch and normalize]
+    FETCH --> PARSE[Parse paper and deadline]
+    PARSE --> SUM[Summarize and embed]
+    SUM --> MATCH[Semantic candidate matching]
+    MATCH --> GATE{Evidence gate}
+    GATE -->|Tier 1| LANG[Sarvam translation and voice]
+    GATE -->|Tier 2 or 3| LEDGER[Audit ledger only]
+    LANG --> TG[Telegram alert]
+    GATE --> LEDGER
 ```
 
-**Sources today:** TRAI (Drupal listing), SEBI (sitemap discovery), and RBI (server-rendered Draft Directions plus RSS fallback). RBI anti-bot interstitials are rejected before summarization; a blocked document remains unprocessed instead of becoming a misleading summary. The adapter contract is one normalized record; **adding a source is one file** plus one registry line. MCA remains excluded because of its 403 bot wall.
+### System Architecture
 
-## Run it locally
+```mermaid
+graph TB
+    subgraph "SCHEDULING AND SOURCES"
+        GH[GitHub Actions every 6h]
+        TRAI[TRAI adapter]
+        SEBI[SEBI adapter]
+        RBI[RBI adapter]
+    end
+
+    subgraph "RENDER WORKFLOWS"
+        SWEEP[sweep_sources]
+        FETCH[fetch_source with retry]
+        PARSE[parse_document]
+        EMBED[summarize_and_embed]
+        USERS[match_users]
+    end
+
+    subgraph "TRUST BOUNDARY"
+        SIM[pgvector similarity]
+        VERIFY[LLM relevance verifier]
+        SPAN[verbatim span check]
+        DEADLINE[deadline evidence check]
+    end
+
+    subgraph "DELIVERY"
+        SARVAM[Sarvam translation and TTS]
+        TELEGRAM[Telegram Bot API]
+        WEB[FastAPI web, RSS, ICS, JSON]
+    end
+
+    subgraph "DATA"
+        DB[(Render PostgreSQL + pgvector)]
+        DOCS[documents]
+        PROFILES[user profiles]
+        DECISIONS[match ledger]
+        ALERTS[alerts]
+    end
+
+    GH --> SWEEP
+    SWEEP --> TRAI
+    SWEEP --> SEBI
+    SWEEP --> RBI
+    TRAI --> FETCH
+    SEBI --> FETCH
+    RBI --> FETCH
+    FETCH --> PARSE --> EMBED --> USERS
+    USERS --> SIM --> VERIFY --> SPAN
+    PARSE --> DEADLINE
+    SPAN --> DECISIONS
+    SPAN -->|confirmed| SARVAM --> TELEGRAM
+    DOCS --> DB
+    PROFILES --> DB
+    DECISIONS --> DB
+    ALERTS --> DB
+    DB --> WEB
+```
+
+The central design rule is: **similarity may nominate a match, but it cannot send an alert.** A push requires a positive verifier verdict and a quotation that can be found in the underlying consultation text.
+
+### Tech Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Web application** | FastAPI + Jinja | Onboarding, feed, consultation pages, ledger, API |
+| **Durable execution** | Render Workflows Python SDK | Task chaining, retries, backoff, run history |
+| **Database** | PostgreSQL 16 + pgvector | Documents, profiles, embeddings, decisions, alerts |
+| **Summaries and verification** | Claude or Gemini | Plain-language summaries and relevance verdicts |
+| **Embeddings** | Gemini embedding, 768 dimensions | Semantic consultation/profile matching |
+| **Indic language layer** | Sarvam Mayura + Bulbul | Translation and optional text-to-speech |
+| **Notifications** | Telegram Bot API | Consent-first text and voice alerts |
+| **Document extraction** | PyMuPDF + Beautiful Soup | PDF and HTML text parsing |
+| **Testing** | pytest | Unit, database, gate, adapter, and web-flow coverage |
+| **Deployment** | Render + GitHub Actions | Web hosting, PostgreSQL, workflows, scheduling |
+
+## The Problem
+
+Indian ministries and regulators publish draft laws, directions, and regulations for public comment. These windows often last only a few weeks, while the source material may be a long PDF with an institutional title buried on a regulator website.
+
+The participation mechanism exists, but discovery is broken:
+
+- citizens and small organizations learn about consultations after they close
+- each regulator publishes in a different format
+- manual tracking and translation limit how many papers civic intermediaries can cover
+- keyword alerts create irrelevant noise and rarely explain why something matched
+- a wrong extracted deadline can be worse than no alert at all
+
+The 2015 Indian net-neutrality campaign demonstrated the opportunity. Once volunteers translated a difficult consultation into accessible language and distributed it widely, public participation changed dramatically. Most consultations never receive that manual intervention.
+
+## The Solution
+
+JanAwaaz automates the discovery and translation layer while keeping uncertainty visible:
+
+1. Scheduled workflows inspect every registered source.
+2. Source adapters normalize new and revised consultation records.
+3. The parser extracts document text, the comment deadline, and the sentence supporting that date.
+4. The system writes a plain-language summary and embeds the consultation.
+5. pgvector ranks citizen profiles as possible matches.
+6. An independent verifier decides whether the consultation materially affects the profile.
+7. The verifier’s quotation is mechanically checked against the source text.
+8. Confirmed matches are translated and delivered; weak or rejected matches stay in the audit ledger.
+
+The practical first users are civic organizations, journalists, professional associations, unions, researchers, and other intermediaries already tracking consultations manually—alongside individually motivated citizens.
+
+## Evidence Gate
+
+| Tier | Requirement | Result |
+|---|---|---|
+| **Tier 1 — Confirmed** | Similarity passes, verifier says yes, and evidence span exists in the source | Push alert |
+| **Tier 2 — Possible** | Similarity passes, but verification is unavailable or evidence cannot be confirmed | Audit review only |
+| **Tier 3 — Rejected** | Verifier says the consultation does not materially affect the profile | Ledger only |
+
+Each evaluated candidate stores:
+
+- consultation and profile identifiers
+- cosine similarity score
+- verifier verdict and reason
+- proposed evidence quotation
+- span-verification result
+- confidence tier and timestamp
+- content fingerprint for retry-safe idempotency
+
+The quotation check proves that the cited words exist in the source. It does not make model judgment infallible, so JanAwaaz describes these as **evidence-gated matches**, not guaranteed relevance.
+
+## Deadline and Data-Quality Controls
+
+- Date extraction only trusts sentences containing both comment context and deadline language.
+- Dates on or before publication are rejected as likely historical references.
+- Comment deadlines are preferred over later counter-comment deadlines.
+- Detail pages are rechecked for deadline extensions.
+- Every accepted deadline retains its source sentence.
+- Anti-bot challenges and CAPTCHA pages are quarantined before summarization.
+- Model responses describing missing or blocked content are discarded.
+- Passed deadlines override stale `open` labels from source websites.
+- Changed content can be processed again, while retries of an unchanged version reuse the existing decision.
+
+## Product Surfaces
+
+### Citizen and Organization Experience
+
+- Natural-language watch profile: “I run a textile export business in Surat…”
+- Signed Telegram connection link—no copied chat ID
+- English, Hindi, or Marathi alert delivery
+- `/stop`, unsubscribe, and privacy-preserving profile deletion
+- Public feed ordered by actionability
+- Shareable page for each consultation
+
+### Integration Endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /feed` | Public consultation feed |
+| `GET /c/{id}` | Shareable consultation detail page |
+| `GET /ledger/{id}` | Evidence and gate-decision view |
+| `GET /feed.rss` | RSS 2.0 feed |
+| `GET /deadlines.ics` | Deadline calendar |
+| `POST /api/users` | Create a watch profile |
+| `GET /api/feed` | Machine-readable consultation feed |
+| `GET /api/ledger/{id}` | Machine-readable gate record |
+| `POST /api/telegram/webhook` | Consent linking and bot commands |
+| `GET /healthz` | Service health check |
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/)
+- Docker with Docker Compose
+- Gemini API key for production-quality embeddings
+- Optional Anthropic key for Claude summaries and verification
+- Optional Sarvam and Telegram credentials for translated push alerts
+
+### Installation
 
 ```bash
-git clone https://github.com/ankitlade12/janawaaz && cd janawaaz
-docker compose up -d                  # Postgres 16 + pgvector on :5433
-cp .env.example .env                  # add keys; or EMBEDDINGS_PROVIDER=dev to run keyless
+git clone https://github.com/ankitlade12/janawaaz.git
+cd janawaaz
+
+docker compose up -d
+cp .env.example .env
 uv sync
+
 uv run python scripts/init_db.py
-uv run python scripts/seed_corpus.py  # real TRAI + SEBI papers through the real pipeline
-uv run python -m janawaaz.pipeline.runner --limit 5   # one full local sweep
-uv run uvicorn janawaaz.web.app:app --reload           # product UI on :8000
+uv run python scripts/seed_corpus.py
+uv run uvicorn janawaaz.web.app:app --reload
 ```
 
-Tests: `uv run pytest` — unit suites run anywhere; gate-flow tests use the database and skip cleanly without one. CI runs everything against a pgvector service container.
+Open [http://localhost:8000](http://localhost:8000).
 
-## Deploy (Render)
+For a keyless local pipeline exercise, set:
 
-`render.yaml` provisions the web service, the cron trigger, and Postgres. The Workflow service (early access) is created in the dashboard — start command `python main.py` — and Render Cron starts its root task via the API (`scripts/trigger_sweep.py`), since Workflows has no native scheduler yet. Per-task `Retry` config is what turns flaky government sites from an outage into a dashboard entry.
+```env
+EMBEDDINGS_PROVIDER=dev
+```
 
-## Sponsor tech, honestly
+The development embedder verifies storage and control flow but is not semantically meaningful and must not be used to demonstrate matching quality.
 
-- **Render Workflows** is the product's spine, not a checkbox: the whole ingestion→gate→notify chain is durable `@app.task`s (`render_sdk`), with retries tuned per task. Plus Render Postgres (pgvector), a Render web service, and Render Cron.
-- **Sarvam AI** makes the vernacular promise real: every alert is machine-translated at send time (Mayura), optionally spoken (Bulbul TTS → Telegram audio) — for *every* consultation, not the hand-picked subset a fellowship team can translate by hand.
-- **Gemini** handles English summaries, match verification, and embeddings (`text-embedding-004`, 768-dim).
+### Run a Sweep
 
-## Who else is in this space
+```bash
+# Full synchronous pipeline
+uv run python -m janawaaz.pipeline.runner --limit 5
 
-| Player | What they do | What's missing |
+# Exercise the pipeline without delivering alerts
+uv run python -m janawaaz.pipeline.runner --limit 5 --skip-notify
+
+# Render Workflows local development
+render workflows dev -- python main.py
+```
+
+### Connect Telegram
+
+Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_WEBHOOK_SECRET`, and `APP_SECRET`, then register the webhook:
+
+```bash
+curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -d "url=https://YOUR_HOST/api/telegram/webhook" \
+  -d "secret_token=$TELEGRAM_WEBHOOK_SECRET"
+```
+
+The webhook secret must match the deployed `TELEGRAM_WEBHOOK_SECRET`. `APP_SECRET` signs Telegram and profile-management links.
+
+## Reproducible Testing
+
+```bash
+# Start PostgreSQL + pgvector so database tests run
+docker compose up -d
+
+# Full suite
+uv run pytest -q
+```
+
+Current verified result:
+
+```text
+33 passed
+```
+
+Coverage includes deadline extraction, historical-date rejection, evidence-span verification, all three gate tiers, retry idempotency, alert composition, TRAI/RBI adapters, challenge-page detection, signed consent tokens, stale-status correction, onboarding, Telegram linking, `/stop`, and profile deletion.
+
+Without a reachable database, pure unit tests run and database-backed tests skip cleanly. GitHub Actions runs the complete suite against a pgvector service container.
+
+## Project Structure
+
+```text
+janawaaz/
+├── janawaaz/
+│   ├── adapters/              # TRAI, SEBI, RBI source adapters
+│   ├── pipeline/              # extract, summarize, match, gate, notify, runner
+│   ├── web/                   # FastAPI app, templates, and styles
+│   ├── config.py              # environment-backed settings
+│   ├── db.py                  # database initialization and additive migrations
+│   ├── models.py              # PostgreSQL and pgvector schema
+│   └── workflows.py           # Render Workflows task definitions
+├── scripts/                   # database init, corpus seed, workflow trigger
+├── tests/                     # unit and integration test suite
+├── docs/
+│   └── janawaaz-deck.pptx     # submission deck
+├── .github/workflows/         # CI and six-hour workflow trigger
+├── docker-compose.yml         # local PostgreSQL + pgvector
+├── render.yaml                # Render web and database blueprint
+├── main.py                    # Render Workflow service entry point
+└── pyproject.toml
+```
+
+## Deployment
+
+`render.yaml` provisions the FastAPI web service and PostgreSQL database. Render Workflows currently requires a separate Workflow service:
+
+- build command: `pip install .`
+- start command: `python main.py`
+- service name: `janawaaz-workflows`
+- environment: the same `DATABASE_URL` and API credentials as the web service
+
+The included GitHub Actions schedule calls `scripts/trigger_sweep.py` every six hours. Set the repository secret `RENDER_API_KEY` so it can start `janawaaz-workflows/sweep_sources`.
+
+Required production secrets are documented in [`.env.example`](.env.example). Never commit `.env`; it is ignored by Git.
+
+## Sources
+
+| Source | Discovery strategy | Notes |
 |---|---|---|
-| **[Civis](https://www.civis.vote)** | The closest mission-mate: plain-language summaries, translations, WhatsApp outreach. Proved the demand. | Human-powered pipeline (fellows + manual tracking) caps coverage and adds days of latency; broadcast, not matched to you |
-| **OurGov.in** | Aggregates open consultations | A portal you must remember to visit |
-| **MyGov** | Government's own platform | Pull-based, partial coverage |
-| **Congress.gov / GovTrack (US)** | Keyword email alerts | Keyword-only, bills not consultations, English only |
-| **Enterprise reg-intel** (FiscalNote PolicyNote, Compliance.ai, Wolters Kluwer Compliance Intelligence '25) | Real automated monitoring; semantic document matching is table stakes here | Five figures a year, built for compliance teams, English only — and none advertise cited-evidence verification for their AI alerts |
+| **TRAI** | Server-rendered open and archive listings | Consultation PDFs and structured metadata |
+| **SEBI** | Official sitemap filtered to consultation pages | Deadlines commonly extracted from attached PDFs |
+| **RBI** | Draft Directions listing plus RSS fallback | Anti-bot responses are quarantined |
 
-**Nobody — at any price — shows why you received an alert with cited spans from the source document.** That verification layer is JanAwaaz's contribution. Everything else here exists so a farmer gets it free, in her language, without asking.
+The normalized adapter contract lives in `janawaaz/adapters/base.py`. MCA is not currently tracked because its public interface returns a bot wall to the service.
 
-## Limitations (known, not hidden)
+## Honest Limitations
 
-- Deadline extraction is regex-first with span verification; unusual phrasings fall back to "deadline unverified — check source" rather than a guess.
-- Open/closed status for SEBI papers is inferred from the extracted deadline (SEBI doesn't expose it).
-- Three sources today. Some RBI PDFs intermittently return anti-bot challenges; these records are quarantined rather than summarized. MCA remains bot-walled.
-- Evidence-span checking proves that a quotation exists in the source; relevance is still a model judgment, so the product calls these evidence-gated matches rather than infallible decisions.
+- Only three national regulators are tracked today.
+- Some RBI papers intermittently return anti-bot challenges and remain unprocessed until a later successful sweep.
+- Evidence-span verification proves quotation provenance, not perfect relevance judgment.
 - The ledger is append-only by service behavior, not a cryptographic or regulator-grade immutable log.
-- Matching quality depends on real embeddings; the keyless `dev` embedder exists for development only.
+- Matching quality requires production embeddings; the development embedder is only a control-flow fallback.
+- Telegram is a practical free delivery channel, but broader citizen reach requires partner distribution and eventually WhatsApp or IVR.
 
 ## Roadmap
 
-More regulators (MeitY, state governments) · WhatsApp channel (per-message template pricing since Jul 2025 — costed, not assumed) · missed-call IVR voice access for non-smartphone users (the Mobile Vaani pattern) · **consent-first** comment-drafting help — never automated submission; the FCC's 18-million-fake-comments scandal is the cautionary tale, and it's why every JanAwaaz alert carries verifiable evidence in the first place · Civis-style partners running on top of the ledger as an API.
+- Add MeitY, state-government, and additional regulator adapters
+- Provide partner workspaces and organization-specific digests
+- Add costed WhatsApp delivery and missed-call IVR access
+- Publish evaluation metrics for relevance precision and deadline extraction
+- Offer consent-first comment drafting without automated submission
+- Expose partner APIs on top of the evidence ledger
 
 ## License
 
-MIT
+JanAwaaz is open source under the [MIT License](LICENSE).
