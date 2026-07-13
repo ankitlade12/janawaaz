@@ -21,6 +21,7 @@ Every confirmed alert includes the consultation, deadline, comment channel, plai
 - **Evidence-Gated Matching** — semantic similarity proposes candidates; an independent verifier must return a source-backed quotation before an alert can push
 - **Deadline Honesty** — extracted dates carry verbatim evidence spans; uncertain deadlines are labeled instead of invented
 - **Vernacular Delivery** — English, हिन्दी, and मराठी alerts through Sarvam AI, with optional Bulbul voice output
+- **Visible Sarvam Proof** — consultation pages provide an on-demand language switch with the Sarvam request receipt shown in the UI
 - **Durable Monitoring** — Render Workflows retries flaky government websites and preserves progress between tasks
 - **Auditable Decisions** — every evaluated candidate records its score, verdict, evidence, verification result, and tier
 - **Consent-First Telegram** — signed one-tap linking, `/stop`, unsubscribe, and profile deletion; users never paste raw chat IDs
@@ -219,6 +220,8 @@ The quotation check proves that the cited words exist in the source. It does not
 | `GET /api/ledger/{id}` | Machine-readable gate record |
 | `POST /api/telegram/webhook` | Consent linking and bot commands |
 | `GET /healthz` | Service health check |
+
+Add `?lang=hi` or `?lang=mr` to a consultation URL to translate its plain-language summary live through Sarvam AI. The page displays the provider receipt while retaining source quotations in their original language for verification.
 
 ## Quick Start
 

@@ -177,11 +177,28 @@ def consultation_page(request: Request, doc_id: int):
     """Shareable per-consultation page — the broadcast unit for intermediaries."""
     from urllib.parse import quote
 
+    selected_lang = request.query_params.get("lang", "en")
+    if selected_lang not in LANGUAGE_LABELS:
+        selected_lang = "en"
     with session() as s:
         doc = s.get(Document, doc_id)
         if doc is None:
             raise HTTPException(404, "no such consultation")
         source_name = s.get(Source, doc.source_id).adapter
+
+    display_summary = _plaintext(doc.summary_en)
+    translation_provider = None
+    translation_request_id = None
+    translation_error = False
+    if selected_lang in ("hi", "mr") and display_summary:
+        try:
+            result = notify.translate_with_metadata(display_summary, selected_lang)
+            display_summary = result.text
+            translation_provider = result.provider
+            translation_request_id = result.request_id
+            translation_error = not result.translated
+        except Exception:
+            translation_error = True
 
     page_url = f"https://janawaaz-web.onrender.com/c/{doc.id}"
     left = days_remaining(doc.deadline)
@@ -201,6 +218,12 @@ def consultation_page(request: Request, doc_id: int):
             "share_whatsapp": f"https://wa.me/?text={share_text}",
             "share_telegram": f"https://t.me/share/url?url={quote(page_url)}&text={share_text}",
             "share_x": f"https://twitter.com/intent/tweet?text={share_text}",
+            "display_summary": display_summary,
+            "selected_lang": selected_lang,
+            "language_labels": LANGUAGE_LABELS,
+            "translation_provider": translation_provider,
+            "translation_request_id": translation_request_id,
+            "translation_error": translation_error,
         },
     )
 

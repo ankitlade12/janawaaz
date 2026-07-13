@@ -5,6 +5,7 @@ and stored (status stays "pending"), so the pipeline is runnable end-to-end in d
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 
 import httpx
@@ -19,6 +20,14 @@ SARVAM_TRANSLATE_URL = "https://api.sarvam.ai/translate"
 SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
 # Sarvam language codes are BCP-47-ish with -IN suffix.
 SARVAM_LANG = {"hi": "hi-IN", "mr": "mr-IN", "en": "en-IN"}
+
+
+@dataclass(frozen=True)
+class TranslationResult:
+    text: str
+    translated: bool
+    provider: str | None = None
+    request_id: str | None = None
 
 
 def days_remaining(deadline: date | None) -> int | None:
@@ -49,11 +58,11 @@ def build_alert_text(doc: Document, ledger: MatchLedger) -> str:
     return "\n".join(lines)
 
 
-def translate(text: str, lang: str) -> str:
-    """Translate via Sarvam. Returns input unchanged for English or when unconfigured."""
+def translate_with_metadata(text: str, lang: str) -> TranslationResult:
+    """Translate through Sarvam and retain a provider request receipt."""
     cfg = settings()
     if lang == "en" or not cfg.sarvam_api_key:
-        return text
+        return TranslationResult(text=text, translated=False)
     resp = httpx.post(
         SARVAM_TRANSLATE_URL,
         headers={"api-subscription-key": cfg.sarvam_api_key},
@@ -61,11 +70,24 @@ def translate(text: str, lang: str) -> str:
             "input": text,
             "source_language_code": "en-IN",
             "target_language_code": SARVAM_LANG.get(lang, "hi-IN"),
+            "model": "sarvam-translate:v1",
         },
         timeout=cfg.http_timeout_seconds,
     )
     resp.raise_for_status()
-    return resp.json().get("translated_text", text)
+    data = resp.json()
+    translated = data.get("translated_text") or text
+    return TranslationResult(
+        text=translated,
+        translated=translated != text,
+        provider="Sarvam AI" if translated != text else None,
+        request_id=data.get("request_id"),
+    )
+
+
+def translate(text: str, lang: str) -> str:
+    """Delivery-path convenience wrapper around the receipted translation call."""
+    return translate_with_metadata(text, lang).text
 
 
 def tts(text: str, lang: str) -> bytes | None:

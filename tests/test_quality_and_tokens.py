@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from janawaaz.models import Document
 from janawaaz.pipeline.extract import is_challenge_text
 from janawaaz.pipeline.summarize import _clean_summary
+from janawaaz.pipeline import notify
 from janawaaz.web.app import _effective_status, _signed_token, _verify_token
 
 
@@ -49,3 +50,36 @@ def test_deadline_overrides_stale_source_status():
         status="open",
     )
     assert _effective_status(doc) == "closed"
+
+
+def test_sarvam_translation_retains_request_receipt(monkeypatch):
+    captured = {}
+
+    class Config:
+        sarvam_api_key = "test-only-key"
+        http_timeout_seconds = 3
+
+    monkeypatch.setattr(notify, "settings", lambda: Config())
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"translated_text": "नमस्ते", "request_id": "sarvam-request-123"}
+
+    def fake_post(url, **kwargs):
+        captured["url"] = url
+        captured["json"] = kwargs["json"]
+        captured["headers"] = kwargs["headers"]
+        return Response()
+
+    monkeypatch.setattr(notify.httpx, "post", fake_post)
+    result = notify.translate_with_metadata("Hello", "hi")
+
+    assert result.text == "नमस्ते"
+    assert result.translated and result.provider == "Sarvam AI"
+    assert result.request_id == "sarvam-request-123"
+    assert captured["url"].endswith("/translate")
+    assert captured["json"]["model"] == "sarvam-translate:v1"
+    assert captured["json"]["target_language_code"] == "hi-IN"

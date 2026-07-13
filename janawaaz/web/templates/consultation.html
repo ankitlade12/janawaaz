@@ -15,6 +15,19 @@
   <div class="consultation-grid">
   <div>
   <div class="ledger-doc consultation-main">
+    <div class="language-switch" aria-label="Summary language">
+      <span>Read summary in</span>
+      <div>
+        {% for code, label in language_labels.items() %}
+        <a href="/c/{{ doc.id }}?lang={{ code }}" class="{{ 'active' if selected_lang == code }}">{{ label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    {% if translation_provider %}
+    <div class="translation-receipt"><span>अ</span><p><strong>Translated live with {{ translation_provider }}</strong><small>{% if translation_request_id %}Request receipt · {{ translation_request_id }}{% else %}Indic-language translation active{% endif %}</small></p></div>
+    {% elif translation_error %}
+    <div class="translation-warning">Translation is temporarily unavailable. Showing the verified English summary.</div>
+    {% endif %}
     {% if doc.deadline and days_remaining is not none and days_remaining >= 0 %}
       <p class="deadline-lead"><strong>Comments close {{ doc.deadline.strftime("%d %B %Y") }}</strong><span>{{ days_remaining }} day{{ '' if days_remaining == 1 else 's' }} left</span>
       {% if doc.deadline_verified %}<span class="badge t1">span-verified</span>{% else %}<span class="badge t2">unverified — check source</span>{% endif %}</p>
@@ -24,11 +37,11 @@
       <p><span class="chip closed">Deadline not stated in the document — check the source page.</span></p>
     {% endif %}
 
-    {% if doc.summary_en %}<div class="content-label">Plain-language summary</div><p class="consultation-summary">{{ doc.summary_en | plaintext }}</p>{% endif %}
+    {% if display_summary %}<div class="content-label">Plain-language summary · {{ language_labels.get(selected_lang, 'English') }}</div><p class="consultation-summary">{{ display_summary }}</p>{% endif %}
 
     {% if doc.deadline_span %}
     <blockquote class="evidence">“{{ doc.deadline_span }}”
-      <span class="src">quoted verbatim from the source document — this is where the deadline comes from</span>
+      <span class="src">Original source language retained for verification — this is where the deadline comes from</span>
     </blockquote>
     {% endif %}
 

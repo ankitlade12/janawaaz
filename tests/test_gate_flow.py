@@ -116,6 +116,8 @@ def test_gate_and_alert_are_idempotent(db_session, doc_and_user, monkeypatch):
         matching, "verify_match",
         lambda *a, **k: Verdict("yes", "ok", "rural broadband subscribers", True),
     )
+    # Unit tests must never spend real Sarvam credits from a developer .env.
+    monkeypatch.setattr(notify, "translate", lambda text, lang: text)
     first = matching.gate_match(db_session, doc, user, similarity=0.55)
     second = matching.gate_match(db_session, doc, user, similarity=0.55)
     assert first.id == second.id
