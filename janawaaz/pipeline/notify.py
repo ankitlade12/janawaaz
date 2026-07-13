@@ -21,6 +21,24 @@ SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
 # Sarvam language codes are BCP-47-ish with -IN suffix.
 SARVAM_LANG = {"hi": "hi-IN", "mr": "mr-IN", "en": "en-IN"}
 
+CONNECT_MESSAGES = {
+    "en": "✅ JanAwaaz alerts are connected. Send /stop anytime to unsubscribe.",
+    "hi": "✅ JanAwaaz अलर्ट जुड़ गए हैं। सदस्यता बंद करने के लिए कभी भी /stop भेजें।",
+    "mr": "✅ JanAwaaz सूचना जोडल्या आहेत. सदस्यता थांबवण्यासाठी कधीही /stop पाठवा.",
+}
+
+STOP_MESSAGES = {
+    "en": "JanAwaaz alerts are off. Your profile management link can reconnect them.",
+    "hi": "JanAwaaz अलर्ट बंद हैं। आपका प्रोफाइल मैनेजमेंट लिंक उन्हें फिर से जोड़ सकता है।",
+    "mr": "JanAwaaz सूचना बंद आहेत. तुमची प्रोफाइल मॅनेजमेंट लिंक त्यांना पुन्हा जोडू शकते.",
+}
+
+NO_MATCH_MESSAGES = {
+    "en": "No verified open matches yet. JanAwaaz will message you when a relevant consultation is still open for comments.",
+    "hi": "अभी कोई सत्यापित खुला मैच नहीं है। जब कोई संबंधित परामर्श टिप्पणियों के लिए खुला होगा, JanAwaaz आपको संदेश भेजेगा।",
+    "mr": "अजून कोणताही सत्यापित खुला जुळणारा परामर्श नाही. संबंधित परामर्श टिप्पण्यांसाठी खुला असेल तेव्हा JanAwaaz तुम्हाला संदेश पाठवेल.",
+}
+
 
 @dataclass(frozen=True)
 class TranslationResult:
@@ -34,6 +52,16 @@ def days_remaining(deadline: date | None) -> int | None:
     if deadline is None:
         return None
     return (deadline - datetime.now(timezone.utc).date()).days
+
+
+def localized_message(kind: str, lang: str | None) -> str:
+    catalogs = {
+        "connect": CONNECT_MESSAGES,
+        "stop": STOP_MESSAGES,
+        "no_match": NO_MATCH_MESSAGES,
+    }
+    catalog = catalogs[kind]
+    return catalog.get(lang or "en") or catalog["en"]
 
 
 def build_alert_text(doc: Document, ledger: MatchLedger) -> str:

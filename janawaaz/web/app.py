@@ -543,14 +543,16 @@ def telegram_webhook(
     chat = message.get("chat") or {}
     text = str(message.get("text") or "")
     if text.strip().lower() == "/stop" and chat.get("id"):
+        lang = "en"
         with session() as s:
             user = s.execute(
                 select(User).where(User.telegram_chat_id == str(chat["id"]))
             ).scalar_one_or_none()
             if user:
+                lang = user.language
                 user.telegram_chat_id = None
                 user.active = False
-        notify.telegram_send(str(chat["id"]), "JanAwaaz alerts are off. Your profile management link can reconnect them.")
+        notify.telegram_send(str(chat["id"]), notify.localized_message("stop", lang))
         return {"ok": True}
     if not text.startswith("/start ") or not chat.get("id"):
         return {"ok": True}
@@ -571,9 +573,14 @@ def telegram_webhook(
             .join(Document, MatchLedger.document_id == Document.id)
             .where(MatchLedger.user_id == uid, MatchLedger.tier == 1)
         ).all()
+        sent_count = 0
         for ledger, doc in rows:
             notify.send_alert(s, doc, user, ledger)
-    notify.telegram_send(str(chat["id"]), "✅ JanAwaaz alerts are connected. Send /stop anytime to unsubscribe.")
+            sent_count += 1
+        lang = user.language
+    notify.telegram_send(str(chat["id"]), notify.localized_message("connect", lang))
+    if sent_count == 0:
+        notify.telegram_send(str(chat["id"]), notify.localized_message("no_match", lang))
     return {"ok": True}
 
 
